@@ -15,6 +15,7 @@ An app that reduces high schools carbon footprints by carpooling students - Buil
 * Open your web browser and navigate to localhost:3000
 
 ## Status
+[![Build Status](https://travis-ci.org/MenloAthertonCoding/cruzebase.svg?branch=master)](https://travis-ci.org/MenloAthertonCoding/cruzebase)
 
 ## Contributing [WIP]
 Fell free to contribute, but be sure to checkout our [contributing guidelines](https://github.com/menloAthertonCoding/websitecore/blob/master/CONTRIBUTING.md)
