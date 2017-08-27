@@ -1,0 +1,9 @@
+language: python
+python:
+  - "3.4"
+  - "3.5"
+  - "3.6"
+install:
+  - pip install django djangorestframework
+script: python manage.py test
+# see http://www.lesinskis.com/travis_ci_django.html when migrating to non sqlite3 database
