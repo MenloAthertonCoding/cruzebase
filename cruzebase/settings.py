@@ -27,6 +27,9 @@ if not os.path.isfile(SECRET_FILE):
     with open(SECRET_FILE, 'w') as f:
         f.write('ThisIsSparta')
 
+with open(SECRET_FILE) as f:
+    SECRET_KEY = f.read().strip()
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
