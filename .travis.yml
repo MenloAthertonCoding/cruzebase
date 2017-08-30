@@ -3,9 +3,6 @@ python:
 - '3.4'
 - '3.5'
 - '3.6'
-before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y spatialite-bin binutils libproj-dev gdal-bin
 install:
 - pip install django djangorestframework
 script: python manage.py test
