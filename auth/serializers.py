@@ -52,7 +52,16 @@ class UserSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
-    # TODO create update method
+    def update(self, instance, validated_data):
+        for k in validated_data:
+            if getattr(instance, k) is not 'password':
+                # Use QuerySet.update to update mutiple objects
+                setattr(instance, k, validated_data[k])
+        if 'password' in validated_data:
+            instance.set_password(validated_data['password'])
+        instance.save()
+        return instance
+
     #TODO add email and password validators
 
 
@@ -68,6 +77,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
         user = UserSerializer().create(user_data)
         return UserProfile.objects.create(user=user, **validated_data)
 
-    # TODO write update method
     def update(self, instance, validated_data):
-        pass
+        user_data = validated_data.pop('user')
+        for k in validated_data:
+            setattr(instance, k, validated_data[k]) # Use QuerySet.update to update mutiple objects
+        instance.save()
+        UserSerializer().update(instance.user, user_data) # Could raise `DoesNotExist` if instance.user is undefined
+        return instance
