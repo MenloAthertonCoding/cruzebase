@@ -137,6 +137,12 @@ class UserProfileTests(APITestCase):
 
 
     def test_get_user_profile_detail(self):
-        """Tests user profile list returns HTTP 200 OK"""
+        """Tests user profile detail returns HTTP 200 OK"""
         response = self.client.get(reverse('rest-auth:users-detail', kwargs={'pk': 1}))
         self._assert_response_equal_status(response)
+
+    def test_destroy_user_profile_detail(self):
+        """Tests deleting user profile returns HTTP 200 OK"""
+        response = self.client.delete(reverse('rest-auth:users-detail', kwargs={'pk': 1}))
+        self._assert_response_equal_status(response)
+        self.assertEqual(self.user_profile.user.is_active, False)
