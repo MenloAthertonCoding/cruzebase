@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User as DjangoUser
 from django.utils.translation import ugettext as _
 
 from rest_framework import serializers
@@ -21,11 +21,11 @@ class UserSerializer(serializers.ModelSerializer):
     # Make these fields required
     first_name = serializers.CharField(max_length=150)
     last_name = serializers.CharField(max_length=150)
-    email = serializers.EmailField() # TODO make unique
+    email = serializers.EmailField()
 
     class Meta:
         """Metadata class. Tells DRF what's gucci."""
-        model = User
+        model = DjangoUser
 
         # Exclude these from serializers
         exclude = ('groups', 'user_permissions')
@@ -46,7 +46,7 @@ class UserSerializer(serializers.ModelSerializer):
         Overrides create method. Saves the `validated_data` to a Django `User` object.
         Salts and hashes a clear text password.
         """
-        user = User(
+        user = DjangoUser(
             username=validated_data['username'],
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
@@ -61,7 +61,7 @@ class UserSerializer(serializers.ModelSerializer):
         """Overrides update method. Updates Django `User` object with `validated_data`."""
         for k in validated_data:
             if getattr(instance, k) is not 'password':
-                # Use QuerySet.update to update mutiple objects
+                # Use QuerySet.update instead to update mutiple objects
                 setattr(instance, k, validated_data[k])
         if 'password' in validated_data:
             instance.set_password(validated_data['password'])
@@ -71,12 +71,21 @@ class UserSerializer(serializers.ModelSerializer):
     def validate_password(self, value):
         """Validates that clear text password `value` is more than 8 characters long"""
         if len(value) < api_settings.PASSWORD_VALIDATOR_MIN_LENGTH:
-            raise serializers.ValidationError(_('Password must be at least\
-            {0} characters long.'.format(api_settings.PASSWORD_VALIDATOR_MIN_LENGTH)))
+            raise serializers.ValidationError(_('Password must be at least {0} characters long.'
+                                                .format(api_settings.PASSWORD_VALIDATOR_MIN_LENGTH)))
         return value
 
     def validate_email(self, value):
-        """Validates that email `value` has whitelisted domain name address"""
+        """Validates that email `value` is unique and has whitelisted domain name address"""
+
+        # Vaildate that email is unique
+        try:
+            DjangoUser.objects.get(email=value)
+        except DjangoUser.DoesNotExist:
+            pass
+        else:
+            raise serializers.ValidationError(_('Email is already taken.'))
+
         # Automatically validates that `value` is a valid email adress (parent validator)
         # TODO Implement method
         return value
