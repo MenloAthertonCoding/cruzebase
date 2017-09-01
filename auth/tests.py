@@ -43,7 +43,7 @@ class UserProfileTests(APITestCase):
                 'password':'new_password',
                 'first_name': 'Test',
                 'last_name': 'Test',
-                'email': 'test@test.com'
+                'email': 'new_user@test.com'
             }
         }
 
@@ -61,6 +61,22 @@ class UserProfileTests(APITestCase):
             'user': {
                 'username':'Test3',
                 'password':'new_password'
+            }
+        }
+
+        response = self.client.post(reverse('rest-auth:users-list'), user_prof_data, format='json')
+        self._assert_response_equal_status(response, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_user_profile_duplicate_email(self):
+        """Tests creating user with a duplicate email results in HTTP 400 BAD REQUEST"""
+        user_prof_data = {
+            'dob': '1995-01-01',
+            'user': {
+                'username':'Test4',
+                'password':'new_password',
+                'first_name': 'Test',
+                'last_name': 'Test',
+                'email': 'test@test.com'
             }
         }
 
