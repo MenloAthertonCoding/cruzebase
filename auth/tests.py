@@ -35,7 +35,7 @@ class UserProfileTests(APITestCase):
         cls.client = APIClient()
 
         # Create a User and UserProfile object
-        _user = User(**cls.get_user_profile_data())
+        _user = User(**cls.get_user_profile_data().pop('user'))
         _user.set_password('password')
         _user.save()
         cls.user_profile = UserProfile.objects.create(user=_user, dob='1995-01-01')
@@ -119,7 +119,7 @@ class UserProfileTests(APITestCase):
         # Update user_profile after partially updating it server
         # side and assert last name are equivalent
         self.user_profile = UserProfile.objects.get(pk=self.user_profile.pk)
-        self.assertEqual(self.user_profile.user.last_name, user_profile_data['user']['last_name'])
+        self.assertEqual(self.user_profile.user.last_name, user_profile_data.pop('user')['last_name'])
 
         # Assert that password has been changed
         self.assertNotEqual(self.user_profile.user.password, user_password_cached)
@@ -132,8 +132,8 @@ class UserProfileTests(APITestCase):
     def test_user_profile_password_write_only(self):
         """Tests users password is write only (cannot be read)"""
         response = self.client.get(reverse('rest-auth:users-list'))
-        for user_profile in json.loads(response.content.decode())['results']:
-            self.assertNotIn('password', user_profile['user'])
+        for user_profile in json.loads(response.content.decode()).pop('results'):
+            self.assertNotIn('password', user_profile.pop('user'))
 
 
     def test_get_user_profile_detail(self):
