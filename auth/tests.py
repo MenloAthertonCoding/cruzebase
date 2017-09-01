@@ -1,4 +1,5 @@
 from datetime import date
+import json
 
 from django.urls import reverse
 from django.contrib.auth.models import User
@@ -25,7 +26,7 @@ class UserProfileTests(APITestCase):
             'last_name': 'Test',
             'email': 'test@test.com'
             })
-        _user.set_password('Test')
+        _user.set_password('password')
         _user.save()
         cls.user_profile = UserProfile.objects.create(user=_user, dob='1995-01-01')
 
@@ -39,7 +40,7 @@ class UserProfileTests(APITestCase):
             'dob': '1995-01-01',
             'user': {
                 'username':'Test2',
-                'password':'Test',
+                'password':'new_password',
                 'first_name': 'Test',
                 'last_name': 'Test',
                 'email': 'test@test.com'
@@ -50,13 +51,29 @@ class UserProfileTests(APITestCase):
         self._assert_response_equal_status(response, status.HTTP_201_CREATED)
         self.assertGreater(UserProfile.objects.count(), 1)
 
+    def test_create_user_profile_no_required_fields(self):
+        """
+        Tests creating user without required `first_name`, `last_name`, and `email`
+        results in HTTP 400 BAD REQUEST
+        """
+        user_prof_data = {
+            'dob': '1995-01-01',
+            'user': {
+                'username':'Test3',
+                'password':'new_password'
+            }
+        }
+
+        response = self.client.post(reverse('rest-auth:users-list'), user_prof_data, format='json')
+        self._assert_response_equal_status(response, status.HTTP_400_BAD_REQUEST)
+
     def test_update_user_profile(self):
         """Tests updating user results in db update and HTTP 200 OK"""
         user_prof_data = {
             'dob': '1897-01-01',
             'user': {
                 'username':'Piply',
-                'password':'Test',
+                'password':'updated_password',
                 'first_name': 'Test4',
                 'last_name': 'Test5',
                 'email': 'test2@test.com'
@@ -81,7 +98,7 @@ class UserProfileTests(APITestCase):
         """Tests partially updating user results in db update and HTTP 200 OK"""
         user_prof_data = {
             'user': {
-                'password': 'Goodlyfe',
+                'password': 'partial_update_password',
                 'last_name': 'Test0'
             }
         }
@@ -103,6 +120,13 @@ class UserProfileTests(APITestCase):
         """Tests user profile list returns HTTP 200 OK"""
         response = self.client.get(reverse('rest-auth:users-list'))
         self._assert_response_equal_status(response)
+
+    def test_user_profile_password_write_only(self):
+        """Tests users password is write only (cannot be read)"""
+        response = self.client.get(reverse('rest-auth:users-list'))
+        for user_profile in json.loads(response.content.decode())['results']:
+            self.assertNotIn('password', user_profile['user'])
+
 
     def test_get_user_profile_detail(self):
         """Tests user profile list returns HTTP 200 OK"""
