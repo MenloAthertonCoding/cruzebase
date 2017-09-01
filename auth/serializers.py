@@ -4,7 +4,7 @@ from django.utils.translation import ugettext as _
 from rest_framework import serializers
 
 from auth.models import UserProfile
-
+from auth.settings import api_settings
 
 class UserSerializer(serializers.ModelSerializer):
     """
@@ -70,11 +70,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     def validate_password(self, value):
         """Validates that clear text password `value` is more than 8 characters long"""
-        # TODO Add PASS_LENGTH to SETTINGS
-        val_len = 8
-        if len(value) < val_len:
+        if len(value) < api_settings.PASSWORD_VALIDATOR_MIN_LENGTH:
             raise serializers.ValidationError(_('Password must be at least\
-            {0} characters long.'.format(val_len)))
+            {0} characters long.'.format(api_settings.PASSWORD_VALIDATOR_MIN_LENGTH)))
         return value
 
     def validate_email(self, value):
