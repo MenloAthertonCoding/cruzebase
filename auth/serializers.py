@@ -28,7 +28,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = DjangoUser
 
         # Exclude these from serializers
-        exclude = ('groups', 'user_permissions')
+        exclude = ('id', 'groups', 'user_permissions')
 
         read_only_fields = (
             'is_active',
