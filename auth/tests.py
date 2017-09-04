@@ -63,7 +63,12 @@ class UserProfileTests(APITestCase):
         self._login(django_user.username)# for now this password is `password`
 
     def _login(self, username='username', password='password'):
+        """Login by username and password"""
         self.client.login(username=username, password=password)
+
+    def _update_profile_user(self):
+        """Update `user_profile` after it being updated server side"""
+        self.user_profile = UserProfile.objects.get(pk=self.user_profile.pk)
 
     def test_create_user_profile(self):
         """Tests creating user results in db creation and HTTP 201 CREATED"""
@@ -118,7 +123,7 @@ class UserProfileTests(APITestCase):
 
         # Update user_profile after updating it server side and assert
         # dobs are not equivalent
-        self.user_profile = UserProfile.objects.get(pk=1)
+        self._update_profile_user()
         year, month, day = user_profile_data['dob'].split('-')
         self.assertEqual(self.user_profile.dob, date(int(year), int(month), int(day)))
 
@@ -145,7 +150,7 @@ class UserProfileTests(APITestCase):
 
         # Update user_profile after updating it server side and assert
         # dobs are not equivalent
-        self.user_profile = UserProfile.objects.get(pk=1)
+        self._update_profile_user()
         year, month, day = user_profile_data['dob'].split('-')
         self.assertEqual(self.user_profile.dob, date(int(year), int(month), int(day)))
 
@@ -184,7 +189,7 @@ class UserProfileTests(APITestCase):
 
         # Update user_profile after partially updating it server
         # side and assert last name are equivalent
-        self.user_profile = UserProfile.objects.get(pk=self.user_profile.pk)
+        self._update_profile_user()
         self.assertEqual(self.user_profile.user.last_name,
                          user_profile_data.pop('user')['last_name'])
 
@@ -196,7 +201,7 @@ class UserProfileTests(APITestCase):
         user_profile_data = {
             'user': {
                 'password': 'partial_update_password',
-                'last_name': 'TEST_PARTIAL_UPDATED_LAST_NAME'
+                'last_name': 'TEST_PARTIAL_UPDATED_LAST_NAME_NO_CREDS'
             }
         }
         response = self.client.patch(reverse('rest-auth:users-detail', kwargs={'pk': 1}),
@@ -208,7 +213,7 @@ class UserProfileTests(APITestCase):
         user_profile_data = {
             'user': {
                 'password': 'partial_update_password',
-                'last_name': 'TEST_PARTIAL_UPDATED_LAST_NAME'
+                'last_name': 'TEST_PARTIAL_UPDATED_LAST_NAME_ADMIN'
             }
         }
         self._login_su()
@@ -221,7 +226,7 @@ class UserProfileTests(APITestCase):
 
         # Update user_profile after partially updating it server
         # side and assert last name are equivalent
-        self.user_profile = UserProfile.objects.get(pk=self.user_profile.pk)
+        self._update_profile_user()
         self.assertEqual(self.user_profile.user.last_name,
                          user_profile_data.pop('user')['last_name'])
 
@@ -251,6 +256,9 @@ class UserProfileTests(APITestCase):
         response = self.client.delete(reverse('rest-auth:users-detail', kwargs={'pk': 1}))
         self.client.logout()
         self._assert_response_equal_status(response)
+
+        # Update user profile and assert that the Django User object is not active
+        self._update_profile_user()
         self.assertEqual(self.user_profile.user.is_active, False)
 
     def test_destroy_user_profile_detail_admin(self):
@@ -259,6 +267,9 @@ class UserProfileTests(APITestCase):
         response = self.client.delete(reverse('rest-auth:users-detail', kwargs={'pk': 1}))
         self.client.logout()
         self._assert_response_equal_status(response)
+
+        # Update user profile and assert that the Django User object is not active
+        self._update_profile_user()
         self.assertEqual(self.user_profile.user.is_active, False)
 
     def test_destroy_user_profile_detail_no_creds(self):
