@@ -15,12 +15,12 @@ class BaseComponent:
         Serializes claim classes to json.
         """
         claims = {}
-        for claim in self.claims:
+        for claim in self._claims():
             try:
                 claim = claim()
             except TypeError:
                 # TODO test that key exists 
-                claim = claim(**self.extra_kwargs[claim])
+                claim = claim(**self._extra_kwargs()[claim])
 
             claims[claim.key()] = claim.value()
 
@@ -31,6 +31,12 @@ class BaseComponent:
         Serializes component into urlsafe base64 json data.
         """
         return urlsafe_b64encode(self.as_json().encode())
+
+    def _extra_kwargs(self):
+        return self.extra_kwargs
+
+    def _claims(self):
+        return self.claims
 
 def component_factory(claims, kwargs):
     class FactoryComponent(BaseComponent):

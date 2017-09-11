@@ -5,7 +5,6 @@ class PayloadComponent(BaseComponent):
     """
     Custom payload component.
     """
-    sub = None
 
     def __init__(self, sub):
         if not isinstance(sub, int):
@@ -20,7 +19,8 @@ class PayloadComponent(BaseComponent):
         jwt_claims.SubClaim
     )
 
-    extra_kwargs = {
-        jwt_claims.IssClaim: {'iss': 'http://www.google.com'},
-        jwt_claims.SubClaim: {'sub': sub},
-    }
+    def _extra_kwargs(self):
+        return {
+            jwt_claims.IssClaim: {'iss': 'http://www.google.com'},
+            jwt_claims.SubClaim: {'sub': self.sub},
+        }
