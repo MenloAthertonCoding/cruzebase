@@ -6,7 +6,7 @@ from rest_framework import authentication
 from rest_framework.exceptions import AuthenticationFailed
 
 from auth.models import UserProfile
-from auth.jwt import PayloadComponent
+from authtoken.jwtcomp import PayloadComponent
 
 from jwt.components import HeaderComponent
 from jwt.exceptions import TokenException
