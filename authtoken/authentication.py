@@ -8,13 +8,14 @@ from rest_framework.exceptions import AuthenticationFailed
 from auth.models import UserProfile
 from authtoken.jwtcomp import PayloadComponent
 
-from jwt.components import HeaderComponent
+from jwt.components import HS256HeaderComponent
 from jwt.exceptions import TokenException
-from jwt import BaseToken, token_factory
+from jwt.algorithms import HMACAgorithm
+from jwt import BaseToken, token_factory, compare
 
 def get_token_instance(user_profile):
     return token_factory(
-        HeaderComponent,
+        HS256HeaderComponent,
         PayloadComponent,
         {
             'payload': {'sub': user_profile.id}
@@ -94,11 +95,13 @@ class JSONWebTokenAuthentication(authentication.BaseAuthentication):
             elif 'sub' in BaseToken.clean(token)[1]: # `sub` in payload
                 user_profile = authenticate_credentials({'id': BaseToken.clean(token)[1]['sub']})
 
-            if BaseToken.is_valid(get_token_instance_sig(user_profile, 'secret'), token): # TODO get actual secret
-                print('Is true')
+            if compare(token, token_factory(HS256HeaderComponent, PayloadComponent,
+                                            {'payload': {'sub': user_profile.user.id}}),
+                       'secret', # TODO get actual secret
+                       HMACAgorithm(HMACAgorithm.SHA256)):
                 return (user_profile.user, token)
-        except TokenException as te:
-            raise AuthenticationFailed(_(str(te)))
+        except TokenException as exc:
+            raise AuthenticationFailed(_(str(exc)))
 
         return None
 

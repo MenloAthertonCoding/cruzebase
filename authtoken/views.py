@@ -1,7 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
-from jwt.components import HeaderComponent
+from jwt.components import HS256HeaderComponent
+from jwt.algorithms import HMACAgorithm
 from jwt import token_factory
 
 from authtoken.serializers import AuthTokenSerializer
@@ -17,10 +18,12 @@ class ObtainAuthToken(APIView):
         user_profile = serializer.validated_data['user'].user_profile
 
         token = token_factory(
-            HeaderComponent,
+            HS256HeaderComponent,
             PayloadComponent,
             {
                 'payload': {'sub': user_profile.id}
             }
         )
-        return Response({'token': token.sign('secret').build()}) # TODO get real secret
+
+        return Response({'token': token.sign('secret', # TODO get real secret
+                                             HMACAgorithm(HMACAgorithm.SHA256)).build()})

@@ -1,13 +1,13 @@
 from datetime import datetime, timedelta
 
-from .algo import BaseAlgorithm, HS256
-from .exceptions import TokenException, ClaimException
+from jwt.algorithms import BaseAlgorithm 
+from jwt.exceptions import TokenException, ClaimException
 
 class BaseClaim:
     """
     All claim classes should extend BaseClaim.
     """
-    reserved = False
+    _reserved = False
     __optional = True
 
     def is_valid(self, data):
@@ -78,7 +78,7 @@ class TypClaim(BaseClaim):
     claim = 'JWT'
 
 
-class AlgClaim(BaseClaim):
+class BaseAlgClaim(BaseClaim):
     """
     A simple reserved, required claim determining the encryption algorithm.
     """
@@ -87,8 +87,15 @@ class AlgClaim(BaseClaim):
     name = 'alg'
 
     def value(self):
-        return str(HS256()) # for now just assume HS256
+        return 'none'
 
+class HS256AlgClaim(BaseAlgClaim):
+    """
+    A simple reserved, required claim determining the encryption algorithm.
+    """
+
+    def value(self):
+        return 'HS256'
 
 class IssClaim(BaseClaim):
     """

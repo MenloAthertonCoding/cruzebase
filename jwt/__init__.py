@@ -1,7 +1,14 @@
-import json, hmac, hashlib, binascii
+import json
+import binascii
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 
-from jwt.exceptions import TokenException, TokenMalformedException
+from jwt.exceptions import (
+    TokenException,
+    TokenMalformedException,
+    InvalidTokenException
+)
+
+from jwt.components import component_factory
 
 
 class BaseToken:
@@ -11,7 +18,6 @@ class BaseToken:
     header_cls = None
     payload_cls = None
     extra_kwargs = {}
-    validated_data = None
 
     def __init__(self):
         try:
@@ -26,19 +32,14 @@ class BaseToken:
             # TODO test that key exists 
             self.payload = self.payload_cls(**self.extra_kwargs['payload'])
 
-    def sign(self, secret, enc=None):
-        if enc is None:
-            enc = hashlib.sha256 # TODO For now hardcode 256
+    def sign(self, secret, alg_instance):
+        sig = alg_instance.sign(self._join(), secret)
+        if not isinstance(sig, bytes):
+            raise AssertionError(
+                'Expected a `bytes` to be returned '
+                'from the view, but received a {0}'.format(type(sig)))
 
-        self.sig = urlsafe_b64encode(
-            hmac.new(
-                secret.encode(),
-                self.urlsafe_b64encode_components(self.header, self.payload),
-                digestmod=enc
-            ).hexdigest().encode()
-        )
-
-        # TODO b64enc sig
+        self.sig = urlsafe_b64encode(sig)
         return self
 
     def _is_signed(self):
@@ -49,8 +50,11 @@ class BaseToken:
             raise TokenException('Token not signed') # TODO fix
         return self.sig
 
+    def _join(self):
+        return self.join(self.header, self.payload)
+
     @staticmethod
-    def urlsafe_b64encode_components(header, payload):
+    def join(header, payload):
         return header.as_comp() + b'.' + payload.as_comp()
 
     def build(self):
@@ -58,24 +62,16 @@ class BaseToken:
         Builds a JWT from header, payload, and signature. If signature has not been
         generated, `TokenException` will be raised.
         """
-        return self.urlsafe_b64encode_components(self.header, self.payload) + b'.' + self._sig()
+        return self._join() + b'.' + self._sig()
 
-    @staticmethod
-    def is_valid(verified_sig, token, instance=None):
+    def is_valid(self, token, secret, alg_instance):
         """
         Validates that `token` is valid and has not been tampered with.
-
-        Adds clean data to `instance` if `instance` is not `None`.
         """
-        # clean_data = BaseToken.clean(token)
-        # if hmac.compare_digest(verified_sig, clean_data[2]):
-        #     if instance is not None:
-        #         instance.validated_data = clean_data
-
-        #     # TODO check each claims .is_valid()
-        #     return True
-        # return False
-        # TODO make work. Returns True for now.
+        clean_data = BaseToken.clean(token)
+        if not alg_instance.verify(self._join(), secret, clean_data[2]):
+            raise InvalidTokenException('Invalid token. Has the token been tampered with?', token)
+        # TODO check each claims .is_valid()
         return True
 
     @staticmethod
@@ -95,25 +91,25 @@ class BaseToken:
 
     @staticmethod
     def clean(token):
-        # comps = ()
-        # for comp in Token._split(token):
-        #     if
-        #     comps += (json.loads(urlsafe_b64decode(comp)),)
-        # return comps
-        header64, payload64, sig = BaseToken._split(token) # TODO check is sig is b64 enc
+        header64, payload64, sig = BaseToken._split(token)
 
         try:
             header = json.loads(urlsafe_b64decode(header64).decode())
             payload = json.loads(urlsafe_b64decode(payload64).decode())
-            sig = urlsafe_b64decode(payload64)
+            sig = urlsafe_b64decode(sig)
         except binascii.Error:
             raise TokenMalformedException('Invalid token header. Token padding malformed.', token)
         return (header, payload, sig)
 
-def token_factory(header, payload, kwargs):
+def token_factory(header, payload, kwargs=None):
+
     class FactoryToken(BaseToken):
         header_cls = header
         payload_cls = payload
-        extra_kwargs = kwargs
+        if kwargs is not None:
+            extra_kwargs = kwargs
 
     return FactoryToken()
+
+def compare(token, instance, secret, alg_instance):
+    return instance.is_valid(token, secret, alg_instance)
