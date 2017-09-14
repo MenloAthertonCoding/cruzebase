@@ -9,7 +9,7 @@ from rest_framework.test import APIRequestFactory, APIClient, APITestCase
 
 from auth.views import UserProfileViewSet
 from auth.models import UserProfile
-
+from auth.serializers import UserProfileSerializer
 
 class UserProfileTests(APITestCase):
 
@@ -35,11 +35,11 @@ class UserProfileTests(APITestCase):
         cls.client = APIClient()
 
         # Create a User and UserProfile object
-        _user_data = cls.get_user_profile_data().pop('user')
-        _user = DjangoUser(**_user_data)
-        _user.set_password(_user_data['password'])
-        _user.save()
-        cls.user_profile = UserProfile.objects.create(user=_user, dob='1995-01-01')
+        serializer = UserProfileSerializer(data=cls.get_user_profile_data())
+        if not serializer.is_valid():
+            # If the serializer isn't valid, raise AssertionError
+            raise AssertionError('.is_valid() must return True.')
+        cls.user_profile = serializer.save()
 
         # Create superuser (admin) user
         _super_user_data = cls.get_user_profile_data(username='admin').pop('user')
