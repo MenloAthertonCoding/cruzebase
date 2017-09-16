@@ -35,16 +35,16 @@ class BaseToken:
                 'Expected a `bytes` to be returned '
                 'from the view, but received a {0}'.format(type(sig)))
 
-        self.sig = urlsafe_b64encode(sig)
+        self.__sig = urlsafe_b64encode(sig)
         return self
 
     def _is_signed(self):
-        return hasattr(self, 'sig')
+        return hasattr(self, '_BaseToken__sig')
 
     def _sig(self):
         if not self._is_signed():
             raise exceptions.TokenSignatureError('Token has not signed. Call ._sign() to sign.')
-        return self.sig
+        return self.__sig
 
     def _join(self):
         return self.join(self.header, self.payload)
