@@ -2,11 +2,7 @@ import json
 import binascii
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 
-from jwt.exceptions import (
-    TokenException,
-    TokenMalformedException,
-    InvalidTokenException
-)
+from jwt import exceptions
 
 from jwt.components import component_factory
 
@@ -47,7 +43,7 @@ class BaseToken:
 
     def _sig(self):
         if not self._is_signed():
-            raise TokenException('Token not signed') # TODO fix
+            raise exceptions.TokenSignatureError('Token has not signed. Call ._sign() to sign.')
         return self.sig
 
     def _join(self):
@@ -70,7 +66,7 @@ class BaseToken:
         """
         clean_data = BaseToken.clean(token)
         if not alg_instance.verify(self._join(), secret, clean_data[2]):
-            raise InvalidTokenException('Invalid token. Has the token been tampered with?', token)
+            raise exceptions.InvalidTokenError('Invalid token signature. Refresh token.', token)
         # TODO check each claims .is_valid()
         return True
 
@@ -84,8 +80,9 @@ class BaseToken:
         try:
             header, payload, sig = token.split(b'.')
         except ValueError:
-            raise TokenException('Invalid token header. Token string should '\
-                                 'split header, payload, and signature by . (period).', token)
+            raise exceptions.MalformedTokenError('Invalid token header. Token string should split'\
+                                                 ' header, payload, and signature by . (period).',
+                                                 token)
 
         return (header, payload, sig)
 
@@ -98,7 +95,8 @@ class BaseToken:
             payload = json.loads(urlsafe_b64decode(payload64).decode())
             sig = urlsafe_b64decode(sig)
         except binascii.Error:
-            raise TokenMalformedException('Invalid token header. Token padding malformed.', token)
+            raise exceptions.MalformedTokenError('Invalid token header. Token padding '\
+                                                 'malformed.', token)
         return (header, payload, sig)
 
 def token_factory(header, payload, kwargs=None):

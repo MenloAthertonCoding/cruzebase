@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from jwt.algorithms import BaseAlgorithm 
-from jwt.exceptions import TokenException, ClaimException
+from jwt import exceptions
 
 class BaseClaim:
     """
@@ -18,7 +18,8 @@ class BaseClaim:
         `True` by default.
         """
         if not getattr(self, '__optional') and self.value() not in data:
-            raise ClaimException('Claim is required but was not found') # TODO
+            raise exceptions.InvalidClaimError('Claim is required however was not '\
+                                               'found in component.')
 
         return True
 
@@ -59,13 +60,14 @@ class BaseDateTimeClaim(BaseClaim):
         super(BaseDateTimeClaim, self).is_valid(data)
         if getattr(self, 'name') in data:
             if self.is_datetime_invalid(data[getattr(self, 'name')], datetime.now()):
-                raise getattr(self, 'invalid_exception', Exception)(getattr(self, 'invalid_except_msg', 'Invalid claim'))#TODO
+                raise getattr(self, 'invalid_exception', exceptions.InvalidClaimError)\
+                              (getattr(self, 'invalid_except_msg'))
 
     def is_datetime_invalid(self, dt, now):
         """
         Children classes must implement .is_datetime_invalid()
         """
-        raise NotImplementedError(".is_datetime_invalid() must be overridden.")
+        raise NotImplementedError('.is_datetime_invalid() must be overridden.')
 
 
 class TypClaim(BaseClaim):
@@ -125,11 +127,11 @@ class NbfClaim(BaseDateTimeClaim):
     """
     _reserved = True
     name = 'nbf'
-    invalid_exception = ClaimException
-    invalid_except_msg = 'nbf claim failed' #TODO
 
     def __init__(self, tmedelta=timedelta(seconds=30)):
         self.dt = datetime.utcnow() + tmedelta
+        self.invalid_except_msg = 'Nbf claim failure. '\
+                                  'Token has been used before {0}.'.format(self.dt)
 
     def is_datetime_invalid(self, dt, now):
         return dt < now
@@ -141,10 +143,11 @@ class ExpClaim(BaseDateTimeClaim):
     """
     _reserved = True
     name = 'exp'
-    invalid_exception = TokenException('Token is expired') # TODO
 
     def __init__(self, tmedelta=timedelta(days=7)):
         self.dt = datetime.utcnow() + tmedelta
+        self.invalid_except_msg = 'Exp claim failure. '\
+                                  'Token has been used after {0}.'.format(self.dt)
 
     def is_datetime_invalid(self, dt, now):
         return dt > now

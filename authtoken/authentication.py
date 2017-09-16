@@ -36,10 +36,10 @@ def authenticate_credentials(kwargs):
     try:
         user_profile = UserProfile.objects.get(**kwargs)
     except UserProfile.DoesNotExist:
-        raise AuthenticationFailed('No such user') # TODO update
+        raise AuthenticationFailed
 
     if not user_profile.user.is_active:
-        raise AuthenticationFailed('User is inactive') # TODO update
+        raise AuthenticationFailed
 
     return user_profile
 
@@ -100,6 +100,9 @@ class JSONWebTokenAuthentication(authentication.BaseAuthentication):
                        'secret', # TODO get actual secret
                        HMACAgorithm(HMACAgorithm.SHA256)):
                 return (user_profile.user, token)
+
+        except AuthenticationFailed:
+            raise AuthenticationFailed(_('Provided credentials invalid.'))
         except TokenException as exc:
             raise AuthenticationFailed(_(str(exc)))
 

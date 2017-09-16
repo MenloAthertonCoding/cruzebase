@@ -7,7 +7,7 @@ def force_bytes(value):
     elif isinstance(value, bytes):
         return value
     else:
-        raise TypeError('Expected a string value')
+        raise TypeError('Expected a string value, got {0} instead.'.format(type(value)))
 
 
 class BaseAlgorithm:
@@ -68,7 +68,7 @@ class NoneAlgorithm(BaseAlgorithm):
 
         if key is not None:
             raise TypeError('Cannot use `NoneAlgorithm` when key is not'\
-                            'of type `None`')
+                            'of type `None`.')
 
         return key
 
