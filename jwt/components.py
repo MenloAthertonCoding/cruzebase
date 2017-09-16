@@ -41,13 +41,13 @@ class BaseComponent:
     def _claims(self):
         return self.claims
 
-def component_factory(claim_cls, kwargs=None):
+def component_factory(*args, kwargs=None):
     class FactoryComponent(BaseComponent):
-        claims = claim_cls
+        claims = args
         if kwargs is not None:
             extra_kwargs = kwargs
 
-    return FactoryComponent()
+    return FactoryComponent
 
 class HS256HeaderComponent(BaseComponent):
     claims = (
