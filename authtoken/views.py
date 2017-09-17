@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from jwt.components import HS256HeaderComponent
-from jwt.algorithms import HMACAgorithm
+from jwt.algorithms import HMACAlgorithm
 from jwt import token_factory
 
 from authtoken.serializers import AuthTokenSerializer
@@ -26,4 +26,4 @@ class ObtainAuthToken(APIView):
         )
 
         return Response({'token': token.sign('secret', # TODO get real secret
-                                             HMACAgorithm(HMACAgorithm.SHA256)).build()})
+                                             HMACAlgorithm(HMACAlgorithm.SHA256)).build()})

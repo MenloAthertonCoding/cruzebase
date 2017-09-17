@@ -10,7 +10,7 @@ from authtoken.jwtcomp import PayloadComponent
 
 from jwt.components import HS256HeaderComponent
 from jwt.exceptions import TokenException
-from jwt.algorithms import HMACAgorithm
+from jwt.algorithms import HMACAlgorithm
 from jwt import BaseToken, token_factory, compare
 
 def get_token_instance(user_profile):
@@ -18,7 +18,7 @@ def get_token_instance(user_profile):
         HS256HeaderComponent,
         PayloadComponent,
         {
-            'payload': {'sub': user_profile.id}
+            'payload': {'aud': user_profile.id}
         }
     )
 
@@ -98,7 +98,7 @@ class JSONWebTokenAuthentication(authentication.BaseAuthentication):
             if compare(token, token_factory(HS256HeaderComponent, PayloadComponent,
                                             {'payload': {'aud': user_profile.user.id}}),
                        'secret', # TODO get actual secret
-                       HMACAgorithm(HMACAgorithm.SHA256)):
+                       HMACAlgorithm(HMACAlgorithm.SHA256)):
                 return (user_profile.user, token)
 
         except AuthenticationFailed:

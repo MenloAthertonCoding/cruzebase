@@ -28,7 +28,7 @@ Examples:
     key and an algorithm class::
 
         >>> from jwt.algorithms import HMACAlgorithm
-        >>> alg = HMACAgorithm(HMACAgorithm.SHA256)
+        >>> alg = HMACAlgorithm(HMACAlgorithm.SHA256)
         >>> token.sign(secret, alg).build()
         b'eyJhbGciOiAiSFMyNTYifQ==.eyJleHAiO4MTEyfQ==.2-1tzEESguaV2HLXtmf9nQWT-Xc='
 

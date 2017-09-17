@@ -82,7 +82,7 @@ class BaseAlgorithm:
         return self.__class__.__name__
 
 
-class HMACAgorithm(BaseAlgorithm):
+class HMACAlgorithm(BaseAlgorithm):
     """Performs signing and verification operations using HMAC
     and the specified hash function.
 
