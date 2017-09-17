@@ -230,6 +230,19 @@ class SubClaim(BaseClaim):
         self.claim = sub
 
 
+class AudClaim(BaseClaim):
+    """A simple reserved claim defining the audience or recipient of the token.
+    For use in a payload.
+
+    Args:
+        aud (str): The audience of the token. Usually, this is a user or recipient(s).
+    """
+    _reserved = True
+    name = 'aud'
+
+    def __init__(self, aud):
+        self.claim = aud
+
 class NbfClaim(BaseDateTimeClaim):
     """A reserved Unix timestamp claim defining after what time a token can be used.
     For use in a payload.

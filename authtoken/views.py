@@ -21,7 +21,7 @@ class ObtainAuthToken(APIView):
             HS256HeaderComponent,
             PayloadComponent,
             {
-                'payload': {'sub': user_profile.id}
+                'payload': {'aud': user_profile.id}
             }
         )
 

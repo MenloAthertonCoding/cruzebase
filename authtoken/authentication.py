@@ -92,11 +92,11 @@ class JSONWebTokenAuthentication(authentication.BaseAuthentication):
                 user_profile = authenticate_credentials({'user__username': username})
             elif user_id:
                 user_profile = authenticate_credentials({'id': user_id})
-            elif 'sub' in BaseToken.clean(token)[1]: # `sub` in payload
-                user_profile = authenticate_credentials({'id': BaseToken.clean(token)[1]['sub']})
+            elif 'aud' in BaseToken.clean(token)[1]: # `aud` in payload
+                user_profile = authenticate_credentials({'id': BaseToken.clean(token)[1]['aud']})
 
             if compare(token, token_factory(HS256HeaderComponent, PayloadComponent,
-                                            {'payload': {'sub': user_profile.user.id}}),
+                                            {'payload': {'aud': user_profile.user.id}}),
                        'secret', # TODO get actual secret
                        HMACAgorithm(HMACAgorithm.SHA256)):
                 return (user_profile.user, token)
