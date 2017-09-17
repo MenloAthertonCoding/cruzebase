@@ -2,10 +2,13 @@ class TokenException(Exception):
     """Raised when a token has a generalized exception.
 
     Args:
-        message (:obj:`str`, optional): Message when exception is raised.
+        message (str, optional): Message when exception is raised.
             Defaults to None.
-        token (:obj:`BaseToken`, optional): BaseToken instance that raised exception.
+        token (BaseToken, optional): BaseToken instance that raised exception.
             Defaults to None.
+
+    Attributes:
+        token (BaseToken): A BaseToken instance that raised the exception.
 
     All token, component, or claim exceptions should extend TokenException.
     """
@@ -15,13 +18,16 @@ class TokenException(Exception):
 
 
 class MalformedTokenError(TokenException):
-    """Raised when a token string is abnormal and not parsable.
+    """Raised when a token string is defective, abnormal, or not parsable.
 
     Args:
-        message (:obj:`str`, optional): Message when exception is raised.
+        message (str, optional): Message when exception is raised.
             Defaults to None.
-        token (:obj:`BaseToken`, optional): BaseToken instance that raised exception.
+        token (BaseToken, optional): BaseToken instance that raised exception.
             Defaults to None.
+
+    Attributes:
+        token (BaseToken): A BaseToken instance that raised the exception.
     """
     pass
 
@@ -30,10 +36,13 @@ class InvalidTokenError(TokenException):
     """Raised when a token's signature is invalid.
 
     Args:
-        message (:obj:`str`, optional): Message when exception is raised.
+        message (str, optional): Message when exception is raised.
             Defaults to None.
-        token (:obj:`BaseToken`, optional): BaseToken instance that raised exception.
+        token (BaseToken, optional): BaseToken instance that raised exception.
             Defaults to None.
+
+    Attributes:
+        token (BaseToken): A BaseToken instance that raised the exception.
     """
     pass
 
@@ -42,10 +51,13 @@ class TokenSignatureError(TokenException):
     """Raised when a token signature is not cryptographically signed.
 
     Args:
-        message (:obj:`str`, optional): Message when exception is raised.
+        message (str, optional): Message when exception is raised.
             Defaults to None.
-        token (:obj:`BaseToken`, optional): BaseToken instance that raised exception.
+        token (BaseToken, optional): BaseToken instance that raised exception.
             Defaults to None.
+
+    Attributes:
+        token (BaseToken): A BaseToken instance that raised the exception.
     """
     pass
 
@@ -54,12 +66,16 @@ class ComponentException(TokenException):
     """Raised when a component has a generalized exception.
 
     Args:
-        message (:obj:`str`, optional): Message when exception is raised.
+        message (str, optional): Message when exception is raised.
             Defaults to None.
-        token (:obj:`BaseToken`, optional): Token instance that raised exception.
+        token (BaseToken, optional): Token instance that raised exception.
             Defaults to None.
-        component (:obj:`BaseComponent`, optional): component instance that raised exception.
+        component (BaseComponent, optional): component instance that raised exception.
             Defaults to None.
+
+    Attributes:
+        token (BaseToken): A BaseToken instance that raised the exception.
+        component (BaseComponent): A BaseComponent instance that raised the exception.
 
     All component or claim exceptions should extend ComponentException.
     """
@@ -70,47 +86,58 @@ class ComponentException(TokenException):
 
 class InvalidComponentError(ComponentException):
     """Raised when component data is not valid. Use MalformedComponentError
-    when component data is abnormal and is not parsable.
+    when component data is defective, abnormal, or not parsable.
 
     Args:
-        message (:obj:`str`, optional): Message when exception is raised.
+        message (str, optional): Message when exception is raised.
             Defaults to None.
-        token (:obj:`BaseToken`, optional): Token instance that raised exception.
+        token (BaseToken, optional): Token instance that raised exception.
             Defaults to None.
-        component (:obj:`BaseComponent`, optional): component instance that raised exception.
+        component (BaseComponent, optional): component instance that raised exception.
             Defaults to None.
+
+    Attributes:
+        token (BaseToken): A BaseToken instance that raised the exception.
+        component (BaseComponent): A BaseComponent instance that raised the exception.
     """
     pass
 
 
 class MalformedComponentError(ComponentException):
-    """Raised when component data is abnormal and not parsable.
+    """Raised when component data is defective, abnormal, or not parsable.
 
     Args:
-        message (:obj:`str`, optional): Message when exception is raised.
+        message (str, optional): Message when exception is raised.
             Defaults to None.
-        token (:obj:`BaseToken`, optional): Token instance that raised exception.
+        token (BaseToken, optional): Token instance that raised exception.
             Defaults to None.
-        component (:obj:`BaseComponent`, optional): component instance that raised exception.
+        component (BaseComponent, optional): component instance that raised exception.
             Defaults to None.
+
+    Attributes:
+        token (BaseToken): A BaseToken instance that raised the exception.
+        component (BaseComponent): A BaseComponent instance that raised the exception.
     """
     pass
-
-
 
 
 class ClaimException(ComponentException):
     """Raised when a claim has a generalized exception.
 
     Args:
-        message (:obj:`str`, optional): Message when exception is raised.
+        message (str, optional): Message when exception is raised.
             Defaults to None.
-        token (:obj:`BaseToken`, optional): BaseToken instance that raised exception.
+        token (BaseToken, optional): BaseToken instance that raised exception.
             Defaults to None.
-        component (:obj:`BaseComponent`, optional): BaseComponent instance that raised exception.
+        component (BaseComponent, optional): BaseComponent instance that raised exception.
             Defaults to None.
-        claim (:obj:`BaseClaim`, optional): BaseClaim instance that raised exception.
+        claim (BaseClaim, optional): BaseClaim instance that raised exception.
             Defaults to None.
+
+    Attributes:
+        token (BaseToken): A BaseToken instance that raised the exception.
+        component (BaseComponent): A BaseComponent instance that raised the exception.
+        claim (BaseClaim): A BaseClaim instance that raised the exception.
 
     All claim exceptions should extend ClaimException.
     """
@@ -121,32 +148,42 @@ class ClaimException(ComponentException):
 
 class InvalidClaimError(ComponentException):
     """Raised when claim data is not valid. Use MalformedClaimError
-    when claim data is abnormal and is not parsable.
+    when claim data is defective, abnormal, or is not parsable.
 
     Args:
-        message (:obj:`str`, optional): Message when exception is raised.
+        message (str, optional): Message when exception is raised.
             Defaults to None.
-        token (:obj:`BaseToken`, optional): BaseToken instance that raised exception.
+        token (BaseToken, optional): BaseToken instance that raised exception.
             Defaults to None.
-        component (:obj:`BaseComponent`, optional): BaseComponent instance that raised exception.
+        component (BaseComponent, optional): BaseComponent instance that raised exception.
             Defaults to None.
-        claim (:obj:`BaseClaim`, optional): BaseClaim instance that raised exception.
+        claim (BaseClaim, optional): BaseClaim instance that raised exception.
             Defaults to None.
+
+    Attributes:
+        token (BaseToken): A BaseToken instance that raised the exception.
+        component (BaseComponent): A BaseComponent instance that raised the exception.
+        claim (BaseClaim): A BaseClaim instance that raised the exception.
     """
     pass
 
 
 class MalformedClaimException(ClaimException):
-    """Raised when claim data is abnormal and not parsable.
+    """Raised when claim data is defective, abnormal, or not parsable.
 
     Args:
-        message (:obj:`str`, optional): Message when exception is raised.
+        message (str, optional): Message when exception is raised.
             Defaults to None.
-        token (:obj:`BaseToken`, optional): BaseToken instance that raised exception.
+        token (BaseToken, optional): BaseToken instance that raised exception.
             Defaults to None.
-        component (:obj:`BaseComponent`, optional): BaseComponent instance that raised exception.
+        component (BaseComponent, optional): BaseComponent instance that raised exception.
             Defaults to None.
-        claim (:obj:`BaseClaim`, optional): BaseClaim instance that raised exception.
+        claim (BaseClaim, optional): BaseClaim instance that raised exception.
             Defaults to None.
+
+    Attributes:
+        token (BaseToken): A BaseToken instance that raised the exception.
+        component (BaseComponent): A BaseComponent instance that raised the exception.
+        claim (BaseClaim): A BaseClaim instance that raised the exception.
     """
     pass
