@@ -73,13 +73,17 @@ class BaseToken:
             header_cls and payload_cls for further parsing. Defaults to None.
 
             Example:
-                The dict's keys must have classes that extend `jwt.claims.BaseClaim`.
-                The values of the dict are of a claim's instatiating parameters as keys
-                and arguments as values::
+                The dict must have two keys, 'payload' and 'header'. The two keys have
+                values of dicts. Inside, are the kwargs passed into the respective component
+                when instatntiating::
 
                 {
-                    claims.IssClaim: {'iss': 'Issuer'}
+                    'payload': {'iss': 'Issuer'}
                 }
+
+    Raises:
+        KeyError: If the header component or payload component requires instantiation arguments,
+            however none were provided.
 
     All token classes should extend BaseToken.
     """
@@ -90,15 +94,26 @@ class BaseToken:
     def __init__(self):
         try:
             self.header = self.header_cls()
-        except TypeError:
-            # TODO test that key exists 
-            self.header = self.header_cls(**self.extra_kwargs['header'])
-
-        try:
             self.payload = self.payload_cls()
         except TypeError:
-            # TODO test that key exists 
-            self.payload = self.payload_cls(**self.extra_kwargs['payload'])
+            if not hasattr(self, 'header'):
+                if 'header' not in self.extra_kwargs:
+                    raise KeyError(
+                        'The header class needs to be instantiated with extra kwargs,'
+                        'but none were found.'
+                    )
+
+                self.header = self.header_cls(**self.extra_kwargs['header'])
+
+            if not hasattr(self, 'payload'):
+                if 'payload' not in self.extra_kwargs:
+                    raise KeyError(
+                        'The header class needs to be instantiated with extra kwargs,'
+                        'but none were found.'
+                    )
+
+                self.payload = self.payload_cls(**self.extra_kwargs['payload'])
+
 
     def sign(self, secret, alg_instance):
         """Cryptographically sign the token using an encryption or hashing algorithm.
@@ -122,8 +137,9 @@ class BaseToken:
         sig = alg_instance.sign(self._join(), secret)
         if not isinstance(sig, bytes):
             raise AssertionError(
-                'Expected a `bytes` to be returned '
-                'from the view, but received a {0}'.format(type(sig)))
+                'Expected a `bytes` object to be returned '
+                'from the signing method, but received a {0}'.format(type(sig))
+            )
 
         self.__sig = urlsafe_b64encode(sig)
         return self
@@ -206,9 +222,10 @@ class BaseToken:
         try:
             header, payload, sig = token.split(b'.')
         except ValueError:
-            raise exceptions.MalformedTokenError('Invalid token header. Token string should split'\
-                                                 ' header, payload, and signature by . (period).',
-                                                 token)
+            raise exceptions.MalformedTokenError(
+                'Invalid token header. Token string should split'
+                ' header, payload, and signature by . (period).',
+                token)
 
         return (header, payload, sig)
 
@@ -236,8 +253,10 @@ class BaseToken:
             payload = json.loads(urlsafe_b64decode(payload64).decode())
             sig = urlsafe_b64decode(sig)
         except binascii.Error:
-            raise exceptions.MalformedTokenError('Invalid token header. Token padding '\
-                                                 'malformed.', token)
+            raise exceptions.MalformedTokenError(
+                'Invalid token header. Token padding malformed.', token
+            )
+
         return (header, payload, sig)
 
 def token_factory(header, payload, kwargs=None):
@@ -261,12 +280,12 @@ def token_factory(header, payload, kwargs=None):
             header and payload components for further parsing. Defaults to None.
 
             Example:
-                The dict's keys must have classes that extend `jwt.claims.BaseClaim`.
-                The values of the dict are of a claim's instatiating parameters as keys
-                and arguments as values::
+                The dict must have two keys, 'payload' and 'header'. The two keys have
+                values of dicts. Inside, are the kwargs passed into the respective component
+                when instantiating::
 
                 {
-                    claims.IssClaim: {'iss': 'Issuer'}
+                    'payload': {'iss': 'Issuer'}
                 }
 
     Returns:

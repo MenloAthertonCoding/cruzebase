@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 
-from jwt.algorithms import BaseAlgorithm 
 from jwt import exceptions
 
 class BaseClaim:
@@ -30,7 +29,7 @@ class BaseClaim:
     All claim classes should extend BaseClaim.
     """
     _reserved = False
-    __optional = True
+    _optional = True
 
     def is_valid(self, data):
         """Validates supplied data. Always call super() when overriding
@@ -45,9 +44,10 @@ class BaseClaim:
         Raises:
             InvalidClaimError: If the data supplied is not valid.
         """
-        if not getattr(self, '__optional') and self.value() not in data:
-            raise exceptions.InvalidClaimError('Claim is required however was not '\
-                                               'found in component.')
+        if not getattr(self, '_optional') and self.value() not in data:
+            raise exceptions.InvalidClaimError(
+                'Claim is required however was not found in component.'
+            )
 
         return True
 
@@ -82,7 +82,7 @@ class BaseClaim:
         return getattr(self, 'name')
 
     def __key(self):
-        return (self.reserved, self.__optional, getattr(self, 'name'))
+        return (self._reserved, self._optional, getattr(self, 'name'))
 
     def __eq__(self, othr):
         return isinstance(othr, self.__class__) and self.__key() == othr.__key()
@@ -178,7 +178,7 @@ class TypClaim(BaseClaim):
     For use in a JOSE-compliant header component.
     """
     _reserved = True
-    __optional = False
+    _optional = False
     name = 'typ'
     claim = 'JWT'
 
@@ -190,7 +190,7 @@ class BaseAlgClaim(BaseClaim):
     All algorithm claims should extend BaseAlgClaim.
     """
     _reserved = True
-    __optional = False
+    _optional = False
     name = 'alg'
 
     def value(self):
@@ -256,8 +256,9 @@ class NbfClaim(BaseDateTimeClaim):
 
     def __init__(self, tmedelta=timedelta(seconds=30)):
         self.dt = datetime.utcnow() + tmedelta
-        self.invalid_except_msg = 'Nbf claim failure. '\
-                                  'Token has been used before {0}.'.format(self.dt)
+        self.invalid_except_msg = (
+            'Nbf claim failure. Token has been used before {0}.'.format(self.dt)
+        )
 
     def is_datetime_invalid(self, dt, now):
         return dt < now
@@ -276,8 +277,9 @@ class ExpClaim(BaseDateTimeClaim):
 
     def __init__(self, tmedelta=timedelta(days=7)):
         self.dt = datetime.utcnow() + tmedelta
-        self.invalid_except_msg = 'Exp claim failure. '\
-                                  'Token has been used after {0}.'.format(self.dt)
+        self.invalid_except_msg = (
+            'Exp claim failure. Token has been used after {0}.'.format(self.dt)
+        )
 
     def is_datetime_invalid(self, dt, now):
         return dt > now

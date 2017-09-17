@@ -125,8 +125,9 @@ class NoneAlgorithm(BaseAlgorithm):
             key = None
 
         if key is not None:
-            raise TypeError('Cannot use `NoneAlgorithm` when key is not'\
-                            'of type `None`.')
+            raise TypeError(
+                'Cannot use `NoneAlgorithm` when key is not of type `None`.'
+            )
 
         return key
 

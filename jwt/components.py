@@ -1,5 +1,5 @@
 import json
-from base64 import urlsafe_b64encode, urlsafe_b64decode
+from base64 import urlsafe_b64encode
 
 from jwt import claims as jwt_claims
 
@@ -18,7 +18,7 @@ class BaseComponent:
 
             Example:
                 The dict's keys must have classes that extend `jwt.claims.BaseClaim`.
-                The values of the dict are of a claim's instatiating parameters as keys
+                The values of the dict are of a claim's instantiating parameters as keys
                 and arguments as values::
 
                 {
@@ -55,9 +55,9 @@ class BaseComponent:
             try:
                 claim = claim()
             except TypeError:
-                # TODO test that key exists
+                # Will raise KeyError if key isn't present.
                 claim = claim(**self._extra_kwargs()[claim])
-        yield claim
+            yield claim
 
     def _extra_kwargs(self):
         return self.extra_kwargs
@@ -65,8 +65,9 @@ class BaseComponent:
     def _claims(self):
         return self.claims
 
-def component_factory(*args, kwargs=None):
-    """Factory method for creating components.
+def component_factory(*args):
+    """Factory method for creating components. Call add_kwargs to add
+    extra kwargs.
 
     Example:
         To create a component using a component factory::
@@ -77,19 +78,8 @@ def component_factory(*args, kwargs=None):
             <class 'jwt.components.component_factory.<locals>.FactoryComponent'>
 
     Args:
-        *args: variable length argument list of claims.
-            each claim must extend `jwt.claims.BaseClaim`.
-        kwargs (dict, optional): Extra keyword arguments that are passed into
-            header and payload components for further parsing. Defaults to None.
-
-            Example:
-                The dict's keys must have classes that extend `jwt.claims.BaseClaim`.
-                The values of the dict are of a claim's instatiating parameters as keys
-                and arguments as values::
-
-                {
-                    claims.IssClaim: {'iss': 'Issuer'}
-                }
+        *args: variable length argument list of claims. each claim must
+            extend `jwt.claims.BaseClaim`.
 
     Returns:
         FactoryComponent: An component class with the specified claims that is
@@ -97,10 +87,40 @@ def component_factory(*args, kwargs=None):
     """
     class FactoryComponent(BaseComponent):
         claims = args
-        if kwargs is not None:
-            extra_kwargs = kwargs
 
     return FactoryComponent
+
+def add_kwargs(component, kwargs):
+    """Adds extra kwargs to a component class. The component must bne uninstantiated,
+    as instantiating also instantiates the claims.
+
+    Args:
+        component (BaseComponent): An uninstantiated component class to add extra kwargs to.
+        kwargs (dict): Extra keyword arguments that are passed into the components claims
+            for further parsing.
+
+        Example:
+            The dict's keys must have classes that extend `jwt.claims.BaseClaim`.
+            The values of the dict are of a claim's instatiating parameters as keys
+            and arguments as values::
+
+            {
+                claims.IssClaim: {'iss': 'Issuer'}
+            }
+
+    Returns:
+        BaseComponent: The component with the extra kwargs added.
+
+    Raises:
+        TypeError: If the component has already been instantiated.
+    """
+    if isinstance(component, BaseComponent):
+        # If component is instantiated
+        raise TypeError('Component has already been instantiated.')
+
+    component.extra_kwargs.update(kwargs)
+    return component
+
 
 class HS256HeaderComponent(BaseComponent):
     claims = (
