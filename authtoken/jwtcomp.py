@@ -1,5 +1,8 @@
 from jwt.components import BaseComponent
-from jwt import BaseToken, claims as jwt_claims
+from jwt import claims as jwt_claims
+
+from authtoken.settings import api_settings
+
 
 class PayloadComponent(BaseComponent):
     """
@@ -14,13 +17,15 @@ class PayloadComponent(BaseComponent):
 
     claims = (
         jwt_claims.IssClaim,
+        jwt_claims.AudClaim,
         jwt_claims.NbfClaim,
         jwt_claims.ExpClaim,
-        jwt_claims.AudClaim
     )
 
     def _extra_kwargs(self):
         return {
-            jwt_claims.IssClaim: {'iss': 'http://www.google.com'},
+            jwt_claims.IssClaim: {'iss': 'Iss'},
             jwt_claims.AudClaim: {'aud': self.aud},
+            jwt_claims.NbfClaim: {'nbf': api_settings.TOKEN_NOT_BEFORE_TIME_DELTA},
+            jwt_claims.ExpClaim: {'exp': api_settings.TOKEN_EXPIRATION_TIME_DELTA},
         }

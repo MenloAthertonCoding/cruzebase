@@ -1,24 +1,22 @@
-import hmac, hashlib
-
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import authentication
 from rest_framework.exceptions import AuthenticationFailed
 
-from auth.models import UserProfile
-from authtoken.jwtcomp import PayloadComponent
-
-from jwt.components import HS256HeaderComponent
 from jwt.exceptions import TokenException
-from jwt.algorithms import HMACAlgorithm
 from jwt import BaseToken, token_factory, compare
 
+from auth.models import UserProfile
+from authtoken.settings import api_settings, secret_key
+
 def get_token_instance(user_profile):
+    """Returns a token instance
+    """
     return token_factory(
-        HS256HeaderComponent,
-        PayloadComponent,
+        api_settings.TOKEN_HEADER_COMPONENT_CLASS,
+        api_settings.TOKEN_PAYLOAD_COMPONENT_CLASS,
         {
-            'payload': {'aud': user_profile.id}
+            'payload': {'aud': api_settings.TOKEN_AUDIENCE or user_profile.id}
         }
     )
 
@@ -69,7 +67,7 @@ class JSONWebTokenAuthentication(authentication.BaseAuthentication):
         if not auth or auth[0].lower() != self.keyword.lower().encode(): # encode to bytestring
             return None
 
-
+        # Ensure the token exists in request headers
         if len(auth) == 1:
             msg = _('Invalid token header. No credentials provided.')
             raise AuthenticationFailed(msg)
@@ -83,11 +81,12 @@ class JSONWebTokenAuthentication(authentication.BaseAuthentication):
             msg = _('Invalid token header. Token string should not contain invalid characters.')
             raise AuthenticationFailed(msg)
 
-
+        # Get username or user id in request headers
         username = request.META.get('X_USERNAME')
         user_id = request.META.get('HTTP_USER_ID') # ex. USER-ID: 100
 
         try:
+            # Get user from username, user_id, or from token payload.
             if username:
                 user_profile = authenticate_credentials({'user__username': username})
             elif user_id:
@@ -95,10 +94,10 @@ class JSONWebTokenAuthentication(authentication.BaseAuthentication):
             elif 'aud' in BaseToken.clean(token)[1]: # `aud` in payload
                 user_profile = authenticate_credentials({'id': BaseToken.clean(token)[1]['aud']})
 
-            if compare(token, token_factory(HS256HeaderComponent, PayloadComponent,
-                                            {'payload': {'aud': user_profile.user.id}}),
-                       'secret', # TODO get actual secret
-                       HMACAlgorithm(HMACAlgorithm.SHA256)):
+            # Verify token
+            if compare(token, get_token_instance(user_profile),
+                       secret_key(),
+                       api_settings.TOKEN_VERIFICATION_ALGORITHM_INSTANCE):
                 return (user_profile.user, token)
 
         except AuthenticationFailed:
