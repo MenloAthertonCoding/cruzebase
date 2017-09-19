@@ -44,7 +44,8 @@ class BaseClaim:
         Raises:
             InvalidClaimError: If the data supplied is not valid.
         """
-        if not getattr(self, '_optional') and self.value() not in data:
+        if not getattr(self, '_optional') and not data:
+            # If claim in required but data is 'None'
             raise exceptions.InvalidClaimError(
                 'Claim is required however was not found in claimset.'
             )
@@ -152,11 +153,12 @@ class BaseDateTimeClaim(BaseClaim):
         Raises:
             Exception: If the data supplied is not valid.
         """
-        super(BaseDateTimeClaim, self).is_valid(data)
-        if getattr(self, 'name') in data:
-            if self.is_datetime_invalid(data[getattr(self, 'name')], datetime.now()):
+        if data:
+            if self.is_datetime_invalid(datetime.utcfromtimestamp(data), datetime.utcnow()):
                 raise getattr(self, 'invalid_exception', exceptions.InvalidClaimError)\
                               (getattr(self, 'invalid_except_msg'))
+
+        super(BaseDateTimeClaim, self).is_valid(data)
 
     def is_datetime_invalid(self, dt, now):
         """Returns when the supplied datetime is invalid.
@@ -248,20 +250,20 @@ class NbfClaim(BaseDateTimeClaim):
     For use in a payload.
 
     Args:
-        tmedelta (timedelta): The delta time to be added to the current time; defines
+        nbf (timedelta): The delta time to be added to the current time; defines
             when the token can be used.
     """
     _reserved = True
     name = 'nbf'
 
-    def __init__(self, tmedelta=timedelta(seconds=30)):
-        self.dt = datetime.utcnow() + tmedelta
+    def __init__(self, nbf=timedelta(seconds=30)):
+        self.dt = datetime.utcnow() + nbf
         self.invalid_except_msg = (
             'Nbf claim failure. Token has been used before {0}.'.format(self.dt)
         )
 
     def is_datetime_invalid(self, dt, now):
-        return dt < now
+        return dt > now
 
 
 class ExpClaim(BaseDateTimeClaim):
@@ -269,17 +271,17 @@ class ExpClaim(BaseDateTimeClaim):
     For use in a payload.
 
     Args:
-        tmedelta (timedelta): The delta time to be added to the current time; defines
+        exp (timedelta): The delta time to be added to the current time; defines
             when the token will expire.
     """
     _reserved = True
     name = 'exp'
 
-    def __init__(self, tmedelta=timedelta(days=7)):
-        self.dt = datetime.utcnow() + tmedelta
+    def __init__(self, exp=timedelta(days=7)):
+        self.dt = datetime.utcnow() + exp
         self.invalid_except_msg = (
             'Exp claim failure. Token has been used after {0}.'.format(self.dt)
         )
 
     def is_datetime_invalid(self, dt, now):
-        return dt > now
+        return dt < now

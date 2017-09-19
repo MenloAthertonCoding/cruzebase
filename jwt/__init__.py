@@ -32,13 +32,14 @@ Examples:
         >>> token.build(secret, alg)
         b'eyJhbGciOiAiSFMyNTYifQ==.eyJleHAiO4MTEyfQ==.2-1tzEESguaV2HLXtmf9nQWT-Xc='
 
-    To verify a token, call .compare() with the unverified token string, the secret key,
-    and a algorithm instance::
+    To verify a token, call .compare() with the unverified token string, the token instance,
+    the secret key, and a algorithm instance. The token instance must have equivalent header and
+    payload classes::
 
         >>> from jwt import compare
         >>>
         >>> # Using token instance from above
-        >>> compare(token.build(secret, alg), secret, alg)
+        >>> compare(token.build(secret, alg), token, secret, alg)
         True
 
 .. _Extra links:
@@ -170,8 +171,7 @@ class BaseToken:
         signing_input = self._join()
         return b'.'.join((signing_input, self._sign(signing_input, secret, alg_instance)))
 
-    @staticmethod
-    def is_valid(token, secret, alg_instance):
+    def is_valid(self, token, secret, alg_instance, verify_claims=True):
         """Validates a token. Valdation compares the signatures and validates that the claims
         of each claimset are correct. The secret and algorithm that was used for encryption or
         hashing must be equivalent in this function.
@@ -187,6 +187,8 @@ class BaseToken:
                 and  cannot be trusted (yet). Therefore, alg_instance is required. See
                 https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/.
                 Extends `jwt.algorithms.BaseAlgorithm`.
+            verify_claims (bool): If the claims should be verified. If false, only
+                the signature will be verified. Defaults to True.
 
         Returns:
             bool: True if the token is cryptographically signed, the authenticity of
@@ -198,7 +200,12 @@ class BaseToken:
         signing_input, sig = BaseToken.clean_crypto(token)
         if not alg_instance.verify(signing_input, secret, sig):
             raise exceptions.InvalidTokenError('Invalid token signature. Refresh token.', token)
-        # TODO check each claims .is_valid()
+
+        if verify_claims:
+            header_data, payload_data = BaseToken.clean_claimsets(signing_input)
+            self.header.is_valid(header_data)
+            self.payload.is_valid(payload_data)
+
         return True
 
     @staticmethod
@@ -390,7 +397,7 @@ def token_factory(header, payload, kwargs=None):
 
     return FactoryToken()
 
-def compare(token, secret, alg_instance):
+def compare(token, instance, secret, alg_instance, verify_claims=True):
     """Validates a token. Valdation compares the signatures and validates that the claims
     of each claimset are correct. The secret and algorithm that was used for encryption or
     hashing must be equivalent in this function.
@@ -409,6 +416,8 @@ def compare(token, secret, alg_instance):
             and  cannot be trusted (yet). Therefore, alg_instance is required. See
             https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/.
             Extends `jwt.algorithms.BaseAlgorithm`.
+        verify_claims (bool, optional): If the claims should be verified. If false, only
+            the signature will be verified. Defaults to True.
 
     Returns:
         bool: True if the token is cryptographically signed, the authenticity of
@@ -417,4 +426,4 @@ def compare(token, secret, alg_instance):
     Raises:
         InvalidTokenError: If the authenticity of a signature cannot be verified.
     """
-    return BaseToken.is_valid(token, secret, alg_instance)
+    return instance.is_valid(token, secret, alg_instance, verify_claims)

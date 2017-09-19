@@ -4,10 +4,19 @@ from rest_framework import authentication
 from rest_framework.exceptions import AuthenticationFailed
 
 from jwt.exceptions import TokenException
-from jwt import BaseToken, compare
+from jwt import BaseToken, compare, token_factory
 
 from auth.models import UserProfile
 from authtoken.settings import api_settings, secret_key
+
+def get_token_instance(user_profile):
+    return token_factory(
+        api_settings.TOKEN_HEADER_CLAIMSET_CLASS,
+        api_settings.TOKEN_PAYLOAD_CLAIMSET_CLASS,
+        {
+            'payload': {'aud': api_settings.TOKEN_AUDIENCE or user_profile.id}
+        }
+    )
 
 def authenticate_credentials(kwargs):
     """
@@ -78,7 +87,7 @@ class JSONWebTokenAuthentication(authentication.BaseAuthentication):
                 user_profile = authenticate_credentials({'id': BaseToken.clean(token)[1]['aud']})
 
             # Verify token
-            if compare(token, secret_key(),
+            if compare(token, get_token_instance(user_profile), secret_key(),
                        api_settings.TOKEN_VERIFICATION_ALGORITHM_INSTANCE):
                 return (user_profile.user, token)
 

@@ -55,10 +55,9 @@ class BaseClaimset:
     def _instantiate_claims(self):
         for claim in self._claims():
             try:
-                claim = claim()
-            except TypeError:
-                # Will raise KeyError if extra kwargs for claim isn't present.
                 claim = claim(**self._extra_kwargs()[claim])
+            except KeyError:
+                claim = claim()
             yield claim
 
     def _extra_kwargs(self):
@@ -66,6 +65,20 @@ class BaseClaimset:
 
     def _claims(self):
         return self.claims
+
+    def is_valid(self, data):
+                """Validates supplied data. Always call super() when overriding
+        this method.
+
+        Args:
+            data (dict): The data to validate. data must be a decoded claimset.
+
+        Returns:
+            bool: True if the claims are valid.
+        """
+        for claim in self._instantiate_claims():
+            claim.is_valid(data.get(claim.key(), None))
+        return True
 
 def claimset_factory(*args):
     """Factory method for creating claimsets. Call add_kwargs to add
