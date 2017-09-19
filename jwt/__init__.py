@@ -32,13 +32,13 @@ Examples:
         >>> token.build(secret, alg)
         b'eyJhbGciOiAiSFMyNTYifQ==.eyJleHAiO4MTEyfQ==.2-1tzEESguaV2HLXtmf9nQWT-Xc='
 
-    To verify a token, call .compare() with the unverified token string, a token
-    instance with equivalent claimsets, the secret key, and a algorithm instance::
+    To verify a token, call .compare() with the unverified token string, the secret key,
+    and a algorithm instance::
 
         >>> from jwt import compare
         >>>
         >>> # Using token instance from above
-        >>> compare(token.build(secret, alg), token, secret, alg)
+        >>> compare(token.build(secret, alg), secret, alg)
         True
 
 .. _Extra links:
