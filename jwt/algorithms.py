@@ -91,13 +91,24 @@ class HMACAlgorithm(BaseAlgorithm):
             value. Check attributes of HMACAlgorithm for all hashing algorithms.
 
     Attributes:
-        SHA256 (func): SHA256 hashing algorithm.
-        SHA384 (func): SHA384 hashing algorithm.
-        SHA512 (func): SHA512 hashing algorithm.
+        SHA256 (tuple): A two-tuple of 'name' and SHA256 hashing algorithm.
+        SHA384 (tuple): A two-tuple of 'name' and SHA384 hashing algorithm.
+        SHA512 (tuple): A two-tuple of 'name' and SHA512 hashing algorithm.
     """
-    SHA256 = hashlib.sha256
-    SHA384 = hashlib.sha384
-    SHA512 = hashlib.sha512
+    SHA256 = (
+        'HS256',
+        hashlib.sha256
+    )
+
+    SHA384 = (
+        'HS384',
+        hashlib.sha384
+    )
+
+    SHA512 = (
+        'HS512',
+        hashlib.sha512
+    )
 
     def __init__(self, hash_algo):
         self.hash_algo = hash_algo
@@ -106,14 +117,14 @@ class HMACAlgorithm(BaseAlgorithm):
         return hmac.new(
             self.prep_key(key),
             msg,
-            digestmod=self.hash_algo
+            digestmod=self.hash_algo[1]
         ).digest()
 
     def verify(self, msg, key, sig):
         return hmac.compare_digest(sig, self.sign(msg, key))
 
     def __str__(self):
-        return 'HS256' # TODO return hashing alg
+        return self.hash_algo[0]
 
 
 class NoneAlgorithm(BaseAlgorithm):
