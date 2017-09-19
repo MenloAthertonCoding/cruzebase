@@ -5,21 +5,21 @@ a RFC standard. JSON Web Tokens (JWTs) are stateless tokens used for
 authentication and information exchange.
 
 Examples:
-    To create a token, simply create a payload component and create a token::
+    To create a token, simply create a payload claimset and create a token::
 
         >>> from jwt import token_factory
-        >>> from jwt.components import HS256HeaderComponent, component_factory
+        >>> from jwt.claimsets import HS256HeaderClaimset, claimset_factory
         >>> from jwt import claims
-        >>> payload = component_factory(claims.NbfClaim, claims.ExpClaim)
-        >>> token_factory(HS256HeaderComponent, payload)
+        >>> payload = claimset_factory(claims.NbfClaim, claims.ExpClaim)
+        >>> token_factory(HS256HeaderClaimset, payload)
         <jwt.token_factory.<locals>.FactoryToken object at 0x7f74799c7b38>
 
-    To create a component that has instance variables, simply extend `jwt.components.BaseComponent`
+    To create a claimset that has instance variables, simply extend `jwt.claimsets.BaseClaimset`
     and add extra_kwargs::
 
-        >>> from jwt.components import BaseComponent
+        >>> from jwt.claimsets import BaseClaimset
         >>> from jwt import claims as jwt_claims
-        >>> class Payload(BaseComponent):
+        >>> class Payload(BaseClaimset):
         ...     claims = (jwt_claims.IssClaim,)
         ...     extra_kwargs = {jwt_claims.IssClaim: {'iss': 'Issuer'}}
         ...
@@ -33,7 +33,7 @@ Examples:
         b'eyJhbGciOiAiSFMyNTYifQ==.eyJleHAiO4MTEyfQ==.2-1tzEESguaV2HLXtmf9nQWT-Xc='
 
     To verify a token, call .compare() with the unverified token string, a token
-    instance with equivalent components, the secret key, and a algorithm instance::
+    instance with equivalent claimsets, the secret key, and a algorithm instance::
 
         >>> from jwt import compare
         >>>
@@ -52,7 +52,7 @@ from base64 import urlsafe_b64encode, urlsafe_b64decode
 
 from jwt import exceptions
 
-from jwt.components import component_factory
+from jwt.claimsets import claimset_factory
 
 
 class BaseToken:
@@ -64,17 +64,17 @@ class BaseToken:
         payload_cls
 
     Attributes:
-        header_cls (BaseComponent): Class that defines the JWT header component.
-            Typically use a JOSE header such as `jwt.components.HS256HeaderComponent`.
-            Extends `jwt.components.BaseComponent`.
-        payload_cls (BaseComponent): Class that defines the JWT payload component.
-            Extends `jwt.components.BaseComponent`.
+        header_cls (BaseClaimset): Class that defines the JWT header claimset.
+            Typically use a JOSE header such as `jwt.claimsets.HS256HeaderClaimset`.
+            Extends `jwt.claimsets.BaseClaimset`.
+        payload_cls (BaseClaimset): Class that defines the JWT payload claimset.
+            Extends `jwt.claimsets.BaseClaimset`.
         extra_kwargs (dict, optional): Extra keyword arguments that are passed into
             header_cls and payload_cls for further parsing. Defaults to None.
 
             Example:
                 The dict must have two keys, 'payload' and 'header'. The two keys have
-                values of dicts. Inside, are the kwargs passed into the respective component
+                values of dicts. Inside, are the kwargs passed into the respective claimset
                 when instatntiating::
 
                 {
@@ -82,7 +82,7 @@ class BaseToken:
                 }
 
     Raises:
-        KeyError: If the header component or payload component requires instantiation arguments,
+        KeyError: If the header claimset or payload claimset requires instantiation arguments,
             however none were provided.
 
     All token classes should extend BaseToken.
@@ -130,7 +130,7 @@ class BaseToken:
 
     @staticmethod
     def join(header, payload):
-        """Convert a header component class and a payload component class into a bytes object
+        """Convert a header claimset class and a payload claimset class into a bytes object
         into a json serialized, urlsafe base64 encoded payload concatenated onto a
         json serialized, urlsafe base64 encoded header. The two values are seperated
         by a . (period).
@@ -139,16 +139,16 @@ class BaseToken:
             header.payload
 
         Args:
-            header (BaseComponent): The header class to be serialized and base64 encoded.
-                Extends `jwt.components.BaseComponent`.
-            payload (BaseComponent): The payload class to be serialized and base64 encoded.
-                Extends `jwt.components.BaseComponent`.
+            header (BaseClaimset): The header class to be serialized and base64 encoded.
+                Extends `jwt.claimsets.BaseClaimset`.
+            payload (BaseClaimset): The payload class to be serialized and base64 encoded.
+                Extends `jwt.claimsets.BaseClaimset`.
 
         Returns:
-            bytes: Returns a payload component concatenated onto a header
-                component with a seperating . (period).
+            bytes: Returns a payload claimset concatenated onto a header
+                claimset with a seperating . (period).
         """
-        return b'.'.join((header.as_comp(), payload.as_comp()))
+        return b'.'.join((header.as_claimset(), payload.as_claimset()))
 
     def build(self, secret, alg_instance):
         """Cryptographically signs and builds a token string using the header, payload,
@@ -173,7 +173,7 @@ class BaseToken:
     @staticmethod
     def is_valid(token, secret, alg_instance):
         """Validates a token. Valdation compares the signatures and validates that the claims
-        of each component are correct. The secret and algorithm that was used for encryption or
+        of each claimset are correct. The secret and algorithm that was used for encryption or
         hashing must be equivalent in this function.
 
         Args:
@@ -276,8 +276,8 @@ class BaseToken:
 
     @staticmethod
     def clean(token):
-        """Cleans a token. Cleaning a token will return the token's components
-        and signature as decoded base64 data. The token's components will not be decoded.
+        """Cleans a token. Cleaning a token will return the token's claimsets
+        and signature as decoded base64 data. The token's claimsets will not be decoded.
         After cleaning, the data can then be parsed.
 
         Args:
@@ -285,7 +285,7 @@ class BaseToken:
                 str or bytes.
 
         Returns:
-            tuple: A three tuple of json deserialized and decoded header and payload components
+            tuple: A three tuple of json deserialized and decoded header and payload claimsets
                 with a decoded signature.
         """
         claimsets, sig = BaseToken.clean_crypto(token)
@@ -331,7 +331,7 @@ class BaseToken:
                 str or bytes.
 
         Returns:
-            tuple: A two tuple of json deserialized and decoded header and payload components.
+            tuple: A two tuple of json deserialized and decoded header and payload claimsets.
 
         Raises:
             MalformedTokenError: If the token's base64 padding is defective, abnormal,
@@ -356,22 +356,22 @@ def token_factory(header, payload, kwargs=None):
         To create a token using a token factory::
 
             >>> from jwt import token_factory
-            >>> from jwt.components import HS256HeaderComponent
+            >>> from jwt.claimsets import HS256HeaderClaimset
             >>> # `payload` is previously defined
-            >>> token_factory(HS256HeaderComponent, payload)
+            >>> token_factory(HS256HeaderClaimset, payload)
             <jwt.token_factory.<locals>.FactoryToken object at 0x7f74799c7b38>
 
     Args:
-        header (BaseComponent): The header class to be used as the token's header component.
-            Extends `jwt.components.BaseComponent`.
-        payload (BaseComponent): The payload class to be used as the token's playload
-            component. Extends `jwt.components.BaseComponent`.
+        header (BaseClaimset): The header class to be used as the token's header claimset.
+            Extends `jwt.claimsets.BaseClaimset`.
+        payload (BaseClaimset): The payload class to be used as the token's playload
+            claimset. Extends `jwt.claimsets.BaseClaimset`.
         kwargs (dict, optional): Extra keyword arguments that are passed into
-            header and payload components for further parsing. Defaults to None.
+            header and payload claimsets for further parsing. Defaults to None.
 
             Example:
                 The dict must have two keys, 'payload' and 'header'. The two keys have
-                values of dicts. Inside, are the kwargs passed into the respective component
+                values of dicts. Inside, are the kwargs passed into the respective claimset
                 when instantiating::
 
                 {
@@ -380,7 +380,7 @@ def token_factory(header, payload, kwargs=None):
 
     Returns:
         FactoryToken: An intantiated token class with the specified header and
-            payload components.
+            payload claimsets.
     """
     class FactoryToken(BaseToken):
         header_cls = header
@@ -392,7 +392,7 @@ def token_factory(header, payload, kwargs=None):
 
 def compare(token, secret, alg_instance):
     """Validates a token. Valdation compares the signatures and validates that the claims
-    of each component are correct. The secret and algorithm that was used for encryption or
+    of each claimset are correct. The secret and algorithm that was used for encryption or
     hashing must be equivalent in this function.
 
     Args:

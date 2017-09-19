@@ -8,8 +8,8 @@ from authtoken.settings import api_settings, secret_key
 
 def get_token_instance(user_profile):
     return token_factory(
-        api_settings.TOKEN_HEADER_COMPONENT_CLASS,
-        api_settings.TOKEN_PAYLOAD_COMPONENT_CLASS,
+        api_settings.TOKEN_HEADER_CLAIMSET_CLASS,
+        api_settings.TOKEN_PAYLOAD_CLAIMSET_CLASS,
         {
             'payload': {'aud': api_settings.TOKEN_AUDIENCE or user_profile.id}
         }

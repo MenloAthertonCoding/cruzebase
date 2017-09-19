@@ -19,11 +19,11 @@ DEFAULTS = {
     'TOKEN_VERIFY_EXPIRATION': True,
     'TOKEN_VERIFY_NOT_BEFORE': True,
 
-    'TOKEN_HEADER_COMPONENT_CLASS':
-    'jwt.components.HS256HeaderComponent',
+    'TOKEN_HEADER_CLAIMSET_CLASS':
+    'jwt.claimsets.HS256HeaderClaimset',
 
-    'TOKEN_PAYLOAD_COMPONENT_CLASS':
-    'authtoken.jwtcomp.PayloadComponent',
+    'TOKEN_PAYLOAD_CLAIMSET_CLASS':
+    'authtoken.claimset.PayloadClaimset',
 
     'TOKEN_EXPIRATION_TIME_DELTA': timedelta(days=7),
     'TOKEN_NOT_BEFORE_TIME_DELTA': timedelta(seconds=3),
@@ -39,8 +39,8 @@ DEFAULTS = {
 
 # List of settings that may be in string import notation.
 IMPORT_STRINGS = (
-    'TOKEN_HEADER_COMPONENT_CLASS',
-    'TOKEN_PAYLOAD_COMPONENT_CLASS',
+    'TOKEN_HEADER_CLAIMSET_CLASS',
+    'TOKEN_PAYLOAD_CLAIMSET_CLASS',
 )
 api_settings = APISettings(USER_SETTINGS, DEFAULTS, IMPORT_STRINGS)
 

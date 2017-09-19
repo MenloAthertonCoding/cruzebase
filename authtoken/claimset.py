@@ -1,12 +1,12 @@
-from jwt.components import BaseComponent
+from jwt.claimsets import BaseClaimset
 from jwt import claims as jwt_claims
 
 from authtoken.settings import api_settings
 
 
-class PayloadComponent(BaseComponent):
+class PayloadClaimset(BaseClaimset):
     """
-    Custom payload component.
+    Custom payload claimset.
     """
 
     def __init__(self, aud):

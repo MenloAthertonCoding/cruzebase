@@ -4,7 +4,7 @@ from rest_framework import authentication
 from rest_framework.exceptions import AuthenticationFailed
 
 from jwt.exceptions import TokenException
-from jwt import BaseToken, token_factory, compare
+from jwt import BaseToken, compare
 
 from auth.models import UserProfile
 from authtoken.settings import api_settings, secret_key

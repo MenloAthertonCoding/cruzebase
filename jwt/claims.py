@@ -46,7 +46,7 @@ class BaseClaim:
         """
         if not getattr(self, '_optional') and self.value() not in data:
             raise exceptions.InvalidClaimError(
-                'Claim is required however was not found in component.'
+                'Claim is required however was not found in claimset.'
             )
 
         return True
@@ -175,7 +175,7 @@ class BaseDateTimeClaim(BaseClaim):
 
 class TypClaim(BaseClaim):
     """A simple reserved, required claim that defining the type of token as a JWT.
-    For use in a JOSE-compliant header component.
+    For use in a JOSE-compliant header claimset.
     """
     _reserved = True
     _optional = False
@@ -185,7 +185,7 @@ class TypClaim(BaseClaim):
 
 class BaseAlgClaim(BaseClaim):
     """A simple reserved, required claim defining the encryption algorithm
-    as NoneAlgorithm. For use in a JOSE-compliant header component.
+    as NoneAlgorithm. For use in a JOSE-compliant header claimset.
 
     All algorithm claims should extend BaseAlgClaim.
     """
@@ -198,7 +198,7 @@ class BaseAlgClaim(BaseClaim):
 
 class HS256AlgClaim(BaseAlgClaim):
     """A simple reserved, required claim defining the encryption algorithm
-    as SHA256. For use in a JOSE-compliant header component.
+    as SHA256. For use in a JOSE-compliant header claimset.
     """
     def value(self):
         return 'HS256'
