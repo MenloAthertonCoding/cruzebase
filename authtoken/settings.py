@@ -26,7 +26,7 @@ DEFAULTS = {
     'authtoken.claimset.PayloadClaimset',
 
     'TOKEN_EXPIRATION_TIME_DELTA': timedelta(days=7),
-    'TOKEN_NOT_BEFORE_TIME_DELTA': timedelta(seconds=3),
+    'TOKEN_NOT_BEFORE_TIME_DELTA': timedelta(seconds=0),
     'TOKEN_ISSUER': None,
     'TOKEN_AUDIENCE': None,
 

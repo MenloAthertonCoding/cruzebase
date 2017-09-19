@@ -67,7 +67,7 @@ class BaseClaimset:
         return self.claims
 
     def is_valid(self, data):
-                """Validates supplied data. Always call super() when overriding
+        """Validates supplied data. Always call super() when overriding
         this method.
 
         Args:
