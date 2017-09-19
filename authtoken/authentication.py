@@ -9,23 +9,6 @@ from jwt import BaseToken, token_factory, compare
 from auth.models import UserProfile
 from authtoken.settings import api_settings, secret_key
 
-def get_token_instance(user_profile):
-    """Returns a token instance
-    """
-    return token_factory(
-        api_settings.TOKEN_HEADER_COMPONENT_CLASS,
-        api_settings.TOKEN_PAYLOAD_COMPONENT_CLASS,
-        {
-            'payload': {'aud': api_settings.TOKEN_AUDIENCE or user_profile.id}
-        }
-    )
-
-def get_token_instance_sig(user, secret, enc=None, instance=None):
-    if instance is None:
-        instance = get_token_instance(user)
-
-    return BaseToken.clean(instance.sign(secret, enc).build())[2]
-
 def authenticate_credentials(kwargs):
     """
     Returns a Django `User` object if `token` is valid, Django `User` object
@@ -95,8 +78,7 @@ class JSONWebTokenAuthentication(authentication.BaseAuthentication):
                 user_profile = authenticate_credentials({'id': BaseToken.clean(token)[1]['aud']})
 
             # Verify token
-            if compare(token, get_token_instance(user_profile),
-                       secret_key(),
+            if compare(token, secret_key(),
                        api_settings.TOKEN_VERIFICATION_ALGORITHM_INSTANCE):
                 return (user_profile.user, token)
 

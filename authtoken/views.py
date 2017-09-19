@@ -1,11 +1,19 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+from jwt import token_factory
+
 from authtoken.serializers import AuthTokenSerializer
-from authtoken.authentication import get_token_instance
 from authtoken.settings import api_settings, secret_key
 
-from jwt.algorithms import HMACAlgorithm
+def get_token_instance(user_profile):
+    return token_factory(
+        api_settings.TOKEN_HEADER_COMPONENT_CLASS,
+        api_settings.TOKEN_PAYLOAD_COMPONENT_CLASS,
+        {
+            'payload': {'aud': api_settings.TOKEN_AUDIENCE or user_profile.id}
+        }
+    )
 
 class ObtainAuthToken(APIView):
     serializer_class = AuthTokenSerializer
@@ -17,7 +25,7 @@ class ObtainAuthToken(APIView):
 
         token = get_token_instance(user_profile)
 
-        return Response({'token': token.sign(
+        return Response({'token': token.build(
             secret_key(),
             api_settings.TOKEN_VERIFICATION_ALGORITHM_INSTANCE
-        ).build()})
+        )})

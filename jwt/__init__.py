@@ -29,7 +29,7 @@ Examples:
 
         >>> from jwt.algorithms import HMACAlgorithm
         >>> alg = HMACAlgorithm(HMACAlgorithm.SHA256)
-        >>> token.sign(secret, alg).build()
+        >>> token.build(secret, alg)
         b'eyJhbGciOiAiSFMyNTYifQ==.eyJleHAiO4MTEyfQ==.2-1tzEESguaV2HLXtmf9nQWT-Xc='
 
     To verify a token, call .compare() with the unverified token string, a token
@@ -38,7 +38,7 @@ Examples:
         >>> from jwt import compare
         >>>
         >>> # Using token instance from above
-        >>> compare(token.sign(secret, alg).build(), token, secret, alg)
+        >>> compare(token.build(secret, alg), token, secret, alg)
         True
 
 .. _Extra links:
@@ -115,42 +115,15 @@ class BaseToken:
                 self.payload = self.payload_cls(**self.extra_kwargs['payload'])
 
 
-    def sign(self, secret, alg_instance):
-        """Cryptographically sign the token using an encryption or hashing algorithm.
-
-        Signing a token prevents tampering and modiication of a jwt as comparing
-        a 'clean' and a 'dirty' signature will raise InvalidTokenError and is not valid.
-
-        Args:
-            secret (str, bytes): The secret used to sign the token.
-                To compare tokens, the same secret is used. The secret can be of type
-                str or bytes.
-            alg_instance(BaseAlgorithm): An instantiated algorithm class used
-                for signing token. Extends `jwt.algorithms.BaseAlgorithm`.
-
-        Returns:
-            BaseToken: Returns itself to allow method chaining.
-
-        Raises:
-            AssertionError: If the algorithm instance doesn't return a bytes object.
-        """
-        sig = alg_instance.sign(self._join(), secret)
+    def _sign(self, signing_input, secret, alg_instance):
+        sig = alg_instance.sign(signing_input, secret)
         if not isinstance(sig, bytes):
             raise AssertionError(
                 'Expected a `bytes` object to be returned '
                 'from the signing method, but received a {0}'.format(type(sig))
             )
 
-        self.__sig = urlsafe_b64encode(sig)
-        return self
-
-    def _is_signed(self):
-        return hasattr(self, '_BaseToken__sig')
-
-    def _sig(self):
-        if not self._is_signed():
-            raise exceptions.TokenSignatureError('Token has not signed. Call ._sign() to sign.')
-        return self.__sig
+        return urlsafe_b64encode(sig)
 
     def _join(self):
         return self.join(self.header, self.payload)
@@ -163,7 +136,7 @@ class BaseToken:
         by a . (period).
 
         Example:
-            header + '.' + payload
+            header.payload
 
         Args:
             header (BaseComponent): The header class to be serialized and base64 encoded.
@@ -175,19 +148,30 @@ class BaseToken:
             bytes: Returns a payload component concatenated onto a header
                 component with a seperating . (period).
         """
-        return header.as_comp() + b'.' + payload.as_comp()
+        return b'.'.join((header.as_comp(), payload.as_comp()))
 
-    def build(self):
-        """Builds a token using the header, payload, and signature by joining the header and
-        payload and concatenating the signature. If signature has not been generated,
-        TokenSignatureError will be raised.
+    def build(self, secret, alg_instance):
+        """Cryptographically signs and builds a token string using the header, payload,
+        and signature by concatenating the header, payload, and signature.
+
+        Signing a token prevents tampering and modiication of a jwt as comparing
+        a 'clean' and a 'dirty' signature will raise InvalidTokenError and considered invalid.
+
+        Args:
+            secret (str, bytes): The secret used to sign the token.
+                To compare tokens, the same secret is used. The secret can be of type
+                str or bytes.
+            alg_instance(BaseAlgorithm): An instantiated algorithm class used
+                for signing token. Extends `jwt.algorithms.BaseAlgorithm`.
 
         Returns:
             bytes: A token conforming to RFC 7519 standards
         """
-        return self._join() + b'.' + self._sig()
+        signing_input = self._join()
+        return b'.'.join((signing_input, self._sign(signing_input, secret, alg_instance)))
 
-    def is_valid(self, token, secret, alg_instance):
+    @staticmethod
+    def is_valid(token, secret, alg_instance):
         """Validates a token. Valdation compares the signatures and validates that the claims
         of each component are correct. The secret and algorithm that was used for encryption or
         hashing must be equivalent in this function.
@@ -211,53 +195,159 @@ class BaseToken:
         Raises:
             InvalidTokenError: If the authenticity of a signature cannot be verified.
         """
-        clean_data = BaseToken.clean(token)
-        if not alg_instance.verify(self._join(), secret, clean_data[2]):
+        signing_input, sig = BaseToken.clean_crypto(token)
+        if not alg_instance.verify(signing_input, secret, sig):
             raise exceptions.InvalidTokenError('Invalid token signature. Refresh token.', token)
         # TODO check each claims .is_valid()
         return True
 
     @staticmethod
-    def _split(token):
+    def split(token):
+        """Splits a token string into individual header and payload claimsets, along with
+        the token's signature. This method does not decode or deserialize a token or it's
+        claimsets.
+
+         Args:
+            token (str, bytes): The token to be split. The token must be of type
+                str or bytes.
+
+        Returns:
+            tuple: A three tuple of the header and payload claimsets with a decoded
+                signature digest.
+        """
+        signing_input, sig = BaseToken.split_crypto(token)
+        header, payload = BaseToken.split_claimsets(signing_input)
+
+        return (header, payload, sig)
+
+    @staticmethod
+    def split_claimsets(claimsets):
+        """Splits a token's claimsets into individual header and payload claimsets.
+        This method does not decode or deserialize a token or it's claimsets.
+
+         Args:
+            claimsets (str, bytes): The claimsets to be split. The claimsets must be of type
+                str or bytes.
+
+        Returns:
+            tuple: A two tuple of the header and payload claimsets.
+
+        Raises:
+            MalformedTokenError: If the token's claimsets are not split by a . (period).
+        """
         try:
-            header, payload, sig = token.split(b'.')
+            header, payload = claimsets.rsplit(b'.', 1)
+        except ValueError:
+            raise exceptions.MalformedTokenError(
+                'Invalid token header. Token string should split'
+                ' header, payload, and signature by . (period).')
+
+        return (header, payload)
+
+
+    @staticmethod
+    def split_crypto(token):
+        """Splits a token's cryptographic elements into the token's claimsets and the
+        token's signature. This method does not decode or deserialize the claimsets or
+        the signature.
+
+        Useful for verifying a signature digest against the token's claimsets as the claimsets
+        can be used as signing input.
+
+        Args:
+            token (str, bytes): The token to be cleaned. The token must be of type
+                str or bytes.
+
+        Returns:
+            tuple: A two tuple of the token's claimsets with a signature digest.
+
+        Raises:
+            MalformedTokenError: If the token's claimsets are not split by a . (period).
+        """
+        try:
+            signing_input, sig = token.rsplit(b'.', 1)
         except ValueError:
             raise exceptions.MalformedTokenError(
                 'Invalid token header. Token string should split'
                 ' header, payload, and signature by . (period).',
                 token)
 
-        return (header, payload, sig)
+        return (signing_input, sig)
 
     @staticmethod
     def clean(token):
         """Cleans a token. Cleaning a token will return the token's components
-        and signature as deserialized data. After cleaning, the data can then be parsed.
+        and signature as decoded base64 data. The token's components will not be decoded.
+        After cleaning, the data can then be parsed.
 
         Args:
-            token (str, bytes): The token to be clean. The token must be of type
+            token (str, bytes): The token to be cleaned. The token must be of type
                 str or bytes.
 
         Returns:
             tuple: A three tuple of json deserialized and decoded header and payload components
                 with a decoded signature.
+        """
+        claimsets, sig = BaseToken.clean_crypto(token)
+        header, payload = BaseToken.clean_claimsets(claimsets)
+        return (header, payload, sig)
+
+    @staticmethod
+    def clean_crypto(token):
+        """Cleans a token's cryptographic elements. Cleaning the cryptographic elements
+        will return the token's signature as decoded base64 data and the header and payload
+        claimsets. After cleaning, the data can then be parsed.
+
+        Args:
+            token (str, bytes): The token to be cleaned. The token must be of type
+                str or bytes.
+
+        Returns:
+            tuple: A two tuple of the token's claimsets with a decoded signature digest.
 
         Raises:
             MalformedTokenError: If the token's base64 padding is defective, abnormal,
                 or not parsable.
         """
-        header64, payload64, sig = BaseToken._split(token)
+        signing_input, sig = BaseToken.split_crypto(token)
 
         try:
-            header = json.loads(urlsafe_b64decode(header64).decode())
-            payload = json.loads(urlsafe_b64decode(payload64).decode())
             sig = urlsafe_b64decode(sig)
         except binascii.Error:
             raise exceptions.MalformedTokenError(
                 'Invalid token header. Token padding malformed.', token
             )
 
-        return (header, payload, sig)
+        return (signing_input, sig)
+
+    @staticmethod
+    def clean_claimsets(claimsets):
+        """Cleans a token's claimsets. Cleaning a token's claimsets will return the token's
+        claimsets as deserialized and decoded base64 data. After cleaning, the data can
+        then be parsed.
+
+        Args:
+            claimsets (str, bytes): The token to be cleaned. The token must be of type
+                str or bytes.
+
+        Returns:
+            tuple: A two tuple of json deserialized and decoded header and payload components.
+
+        Raises:
+            MalformedTokenError: If the token's base64 padding is defective, abnormal,
+                or not parsable.
+        """
+        header, payload = BaseToken.split_claimsets(claimsets)
+
+        try:
+            header = json.loads(urlsafe_b64decode(header).decode())
+            payload = json.loads(urlsafe_b64decode(payload).decode())
+        except binascii.Error:
+            raise exceptions.MalformedTokenError(
+                'Invalid token header. Token padding malformed.'
+            )
+
+        return (header, payload)
 
 def token_factory(header, payload, kwargs=None):
     """Factory method for creating tokens.
@@ -300,7 +390,7 @@ def token_factory(header, payload, kwargs=None):
 
     return FactoryToken()
 
-def compare(token, instance, secret, alg_instance):
+def compare(token, secret, alg_instance):
     """Validates a token. Valdation compares the signatures and validates that the claims
     of each component are correct. The secret and algorithm that was used for encryption or
     hashing must be equivalent in this function.
@@ -327,4 +417,4 @@ def compare(token, instance, secret, alg_instance):
     Raises:
         InvalidTokenError: If the authenticity of a signature cannot be verified.
     """
-    return instance.is_valid(token, secret, alg_instance)
+    return BaseToken.is_valid(token, secret, alg_instance)
