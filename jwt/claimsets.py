@@ -2,6 +2,8 @@ import json
 from base64 import urlsafe_b64encode
 
 from jwt import claims as jwt_claims
+from jwt.exceptions import ClaimsetException
+
 
 class BaseClaimset:
     """Claimset class. Serializes claim classes into json objects.
@@ -84,7 +86,13 @@ def claimset_factory(*args):
     Returns:
         FactoryClaimset: An claimset class with the specified claims that is
             NOT instantiated.
+
+    Raises:
+        ClaimsetException: If no claims were given as arguments.
     """
+    if not args:
+        # If there are no claims
+        raise ClaimsetException('No claims were provided. Claimset class could not be created.')
 
     class FactoryClaimset(BaseClaimset):
         claims = args
