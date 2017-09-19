@@ -11,6 +11,7 @@ class UserProfile(models.Model):
     dob = models.DateField(verbose_name='Date of Birth')
     car = models.BooleanField(verbose_name='Car?', default=False)
     num_seats = models.PositiveSmallIntegerField(verbose_name='Number of Car seats', null=True)
-
+    suspend = models.BooleanField(verbose_name='Suspended account?', default=False)
+    
     def __str__(self):
         return self.user.get_full_name()
