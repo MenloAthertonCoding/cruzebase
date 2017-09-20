@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='userprofile',
-            name='is_suspend',
+            name='is_suspended',
             field=models.BooleanField(default=False, verbose_name='Suspended account?'),
         ),
         migrations.AlterField(
