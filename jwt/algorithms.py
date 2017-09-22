@@ -87,7 +87,7 @@ class HMACAlgorithm(BaseAlgorithm):
     and the specified hash function.
 
     Args:
-        hash_algo (func): A hashing function. Fore example, use HMACAlgorithm.SHA256
+        hash_algo (func): A hashing function. For example, use HMACAlgorithm.SHA256
             value. Check attributes of HMACAlgorithm for all hashing algorithms.
 
     Attributes:
@@ -147,6 +147,9 @@ class NoneAlgorithm(BaseAlgorithm):
 
     def verify(self, msg, key, sig):
         return False
+
+    def __str__(self):
+        return 'none'
 
 class RSAAlgorithm(BaseAlgorithm):
     """Performs signing and verification operations using RSA
