@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 
-from jwt import exceptions
+from jwt.exceptions import InvalidClaimError
+from jwt.algorithms import HMACAlgorithm
+
 
 class BaseClaim:
     """Claim class. Validates claim data and accesses a claim's name and value.
@@ -44,9 +46,9 @@ class BaseClaim:
         Raises:
             InvalidClaimError: If the data supplied is not valid.
         """
-        if not getattr(self, '_optional') and not data:
+        if not getattr(self, '_optional') and data is None:
             # If claim in required but data is 'None'
-            raise exceptions.InvalidClaimError(
+            raise InvalidClaimError(
                 'Claim is required however was not found in claimset.'
             )
 
@@ -139,7 +141,7 @@ class BaseDateTimeClaim(BaseClaim):
         Returns:
             str: The string value of the claim.
         """
-        return getattr(self, 'dt', datetime.utcnow()).timestamp()
+        return int(getattr(self, 'dt', datetime.utcnow()).timestamp())
 
     def is_valid(self, data):
         """Validates supplied data against the current timestamp.
@@ -152,11 +154,17 @@ class BaseDateTimeClaim(BaseClaim):
 
         Raises:
             Exception: If the data supplied is not valid.
+            InvalidClaimError: If data is of type None.
         """
-        if data:
-            if self.is_datetime_invalid(datetime.utcfromtimestamp(data), datetime.utcnow()):
-                raise getattr(self, 'invalid_exception', exceptions.InvalidClaimError)\
-                              (getattr(self, 'invalid_except_msg'))
+        if not data:
+            raise InvalidClaimError(
+                'Timestamp claim failure. Expected `val`ue {0} but got '
+                '`{1}` instead.'.format(self.value(), data)
+            )
+
+        if self.is_datetime_invalid(datetime.utcfromtimestamp(data), datetime.utcnow()):
+            raise getattr(self, 'invalid_exception', InvalidClaimError)\
+                            (getattr(self, 'invalid_except_msg'))
 
         super(BaseDateTimeClaim, self).is_valid(data)
 
@@ -184,6 +192,16 @@ class TypClaim(BaseClaim):
     name = 'typ'
     claim = 'JWT'
 
+    def is_valid(self, data):
+        if data is not self.value():
+            # Also raised if data is of type None
+            raise InvalidClaimError(
+                'Typ claim failure. Expected value `{0}` but got '
+                '`{1}` instead.'.format(self.value(), data)
+            )
+
+        super(TypClaim, self).is_valid(data)
+
 
 class BaseAlgClaim(BaseClaim):
     """A simple reserved, required claim defining the encryption algorithm
@@ -198,12 +216,36 @@ class BaseAlgClaim(BaseClaim):
     def value(self):
         return 'none'
 
-class HS256AlgClaim(BaseAlgClaim):
+    def is_valid(self, data):
+        if data is not self.value():
+            # Also raised if data is of type None
+            raise InvalidClaimError(
+                'Alg claim failure. Expected value `{0}` but got '
+                '`{1}` instead.'.format(self.value(), data)
+            )
+
+        super(BaseAlgClaim, self).is_valid(data)
+
+class HMACAlgClaim(BaseAlgClaim):
     """A simple reserved, required claim defining the encryption algorithm
     as SHA256. For use in a JOSE-compliant header claimset.
+
+    Args:
+        alg (tuple, optional): The algorithm to use to sign the token.
+            For example, use HMACAlgorithm.SHA256 value. Check attributes
+            of HMACAlgorithm for all hashing algorithms.
+
+    Raises:
+        TypeError: If alg is not of type tuple.
     """
+    def __init__(self, alg=HMACAlgorithm.SHA256):
+        if not isinstance(alg, tuple):
+            raise TypeError('Algorithm must be of type tuple.')
+
+        self.alg = alg
+
     def value(self):
-        return 'HS256'
+        return self.alg[0]
 
 class IssClaim(BaseClaim):
     """A simple reserved claim defining the issuer of the token. For use in a payload.
@@ -216,6 +258,16 @@ class IssClaim(BaseClaim):
 
     def __init__(self, iss):
         self.claim = iss
+
+    def is_valid(self, data):
+        if data is not self.value():
+            # Also raised if data is of type None
+            raise InvalidClaimError(
+                'Iss claim failure. Expected value `{0}` but got '
+                '`{1}` instead.'.format(self.value(), data)
+            )
+
+        super(IssClaim, self).is_valid(data)
 
 
 class SubClaim(BaseClaim):
@@ -231,6 +283,17 @@ class SubClaim(BaseClaim):
     def __init__(self, sub):
         self.claim = sub
 
+    def is_valid(self, data):
+        if data is not self.value():
+            # Also raised if data is of type None
+            raise InvalidClaimError(
+                'Sub claim failure. Expected value `{0}` but got '
+                '`{1}` instead.'.format(self.value(), data)
+            )
+
+        super(SubClaim, self).is_valid(data)
+
+
 
 class AudClaim(BaseClaim):
     """A simple reserved claim defining the audience or recipient of the token.
@@ -244,6 +307,17 @@ class AudClaim(BaseClaim):
 
     def __init__(self, aud):
         self.claim = aud
+
+    def is_valid(self, data):
+        if data is not self.value():
+            # Also raised if data is of type None
+            raise InvalidClaimError(
+                'Aud claim failure. Expected value `{0}` but got '
+                '`{1}` instead.'.format(self.value(), data)
+            )
+
+        super(AudClaim, self).is_valid(data)
+
 
 class NbfClaim(BaseDateTimeClaim):
     """A reserved Unix timestamp claim defining after what time a token can be used.
@@ -263,7 +337,7 @@ class NbfClaim(BaseDateTimeClaim):
         )
 
     def is_datetime_invalid(self, dt, now):
-        return dt > now
+        return dt >= now
 
 
 class ExpClaim(BaseDateTimeClaim):
@@ -284,4 +358,4 @@ class ExpClaim(BaseDateTimeClaim):
         )
 
     def is_datetime_invalid(self, dt, now):
-        return dt < now
+        return dt <= now

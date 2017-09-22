@@ -3,6 +3,7 @@ from base64 import urlsafe_b64encode
 
 from jwt import claims as jwt_claims
 from jwt.exceptions import ClaimsetException
+from jwt.algorithms import HMACAlgorithm
 
 
 class BaseClaimset:
@@ -146,5 +147,9 @@ def add_kwargs(claimset, kwargs):
 class HS256HeaderClaimset(BaseClaimset):
     claims = (
         jwt_claims.TypClaim,
-        jwt_claims.HS256AlgClaim
+        jwt_claims.HMACAlgClaim
     )
+
+    extra_kwargs = {
+        'alg': HMACAlgorithm.SHA256
+    }
