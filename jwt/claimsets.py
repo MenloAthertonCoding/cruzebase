@@ -41,7 +41,7 @@ class BaseClaimset:
         """
         claims = {}
         for claim in self._instantiate_claims():
-            claims[claim.key()] = claim.value()
+            claims.update({claim.key(): claim.value()})
         return json.dumps(claims)
 
 
@@ -83,7 +83,7 @@ class BaseClaimset:
 
 def claimset_factory(*args):
     """Factory method for creating claimsets. Call add_kwargs to add
-    extra kwargs.
+    extra kwargs.HS256HeaderClaimset
 
     Example:
         To create a claimset using a claimset factory::
@@ -144,12 +144,27 @@ def add_kwargs(claimset, kwargs):
     return claimset
 
 
-class HS256HeaderClaimset(BaseClaimset):
+class HMACHeaderClaimset(BaseClaimset):
+    """A JOSE-compliant header claimset that uses HMAC to sign a token.
+
+    Args:
+        alg (tuple, optional): The algorithm to use to sign the token.
+            For example, use HMACAlgorithm.SHA256 value. Check attributes
+            of HMACAlgorithm for all hashing algorithms.
+
+    Raises:
+        TypeError: If alg is not of type tuple.
+    """
     claims = (
         jwt_claims.TypClaim,
         jwt_claims.HMACAlgClaim
     )
 
-    extra_kwargs = {
-        'alg': HMACAlgorithm.SHA256
-    }
+    def __init__(self, alg=HMACAlgorithm.SHA256):
+        if not isinstance(alg, tuple):
+            raise TypeError('Algorithm must be of type tuple.')
+
+        self.alg = alg
+
+    def _extra_kwargs(self):
+        return {'alg': self.alg}
