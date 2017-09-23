@@ -158,7 +158,7 @@ class BaseDateTimeClaim(BaseClaim):
         """
         if not data:
             raise InvalidClaimError(
-                'Timestamp claim failure. Expected `val`ue {0} but got '
+                'Timestamp claim failure. Expected value `{0}` but got '
                 '`{1}` instead.'.format(self.value(), data)
             )
 
@@ -193,7 +193,7 @@ class TypClaim(BaseClaim):
     claim = 'JWT'
 
     def is_valid(self, data):
-        if data is not self.value():
+        if data != self.value():
             # Also raised if data is of type None
             raise InvalidClaimError(
                 'Typ claim failure. Expected value `{0}` but got '
@@ -217,7 +217,7 @@ class BaseAlgClaim(BaseClaim):
         return 'none'
 
     def is_valid(self, data):
-        if data is not self.value():
+        if data != self.value():
             # Also raised if data is of type None
             raise InvalidClaimError(
                 'Alg claim failure. Expected value `{0}` but got '
@@ -260,7 +260,7 @@ class IssClaim(BaseClaim):
         self.claim = iss
 
     def is_valid(self, data):
-        if data is not self.value():
+        if data != self.value():
             # Also raised if data is of type None
             raise InvalidClaimError(
                 'Iss claim failure. Expected value `{0}` but got '
@@ -284,7 +284,7 @@ class SubClaim(BaseClaim):
         self.claim = sub
 
     def is_valid(self, data):
-        if data is not self.value():
+        if data != self.value():
             # Also raised if data is of type None
             raise InvalidClaimError(
                 'Sub claim failure. Expected value `{0}` but got '
@@ -309,7 +309,7 @@ class AudClaim(BaseClaim):
         self.claim = aud
 
     def is_valid(self, data):
-        if data is not self.value():
+        if data != self.value():
             # Also raised if data is of type None
             raise InvalidClaimError(
                 'Aud claim failure. Expected value `{0}` but got '
