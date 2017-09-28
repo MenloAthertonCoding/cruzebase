@@ -1,4 +1,5 @@
 from django.utils.translation import ugettext_lazy as _
+from django.core.exceptions import ValidationError
 
 from rest_framework import authentication
 from rest_framework.exceptions import AuthenticationFailed
@@ -7,6 +8,7 @@ from jwt.exceptions import TokenException
 from jwt import BaseToken, compare, token_factory
 
 from auth.models import UserProfile
+
 from authtoken.settings import api_settings, secret_key
 
 def get_token_instance(user_profile):
@@ -18,18 +20,29 @@ def get_token_instance(user_profile):
         }
     )
 
+def validate_user(user):
+    """Validates a user is active and can be used to authenticate.
+    """
+    # From Django 1.10 onwards the `authenticate` call simply
+    # returns `None` for is_active=False users.
+    # (Assuming the default `ModelBackend` authentication backend.)
+    if not user.is_active:
+        raise ValidationError('User account is disabled.')
+
 def authenticate_credentials(kwargs):
     """
-    Returns a Django `User` object if `token` is valid, Django `User` object
-    exists and is active.
+    Returns a UserProfile object from the given kwargs if the UserProfile object
+    exists and is valid. AuthTokenSerializer validates UserProfile object.
     """
     try:
         user_profile = UserProfile.objects.get(**kwargs)
     except UserProfile.DoesNotExist:
-        raise AuthenticationFailed
+        raise AuthenticationFailed('User non existant')
 
-    if not user_profile.user.is_active:
-        raise AuthenticationFailed
+    try:
+        validate_user(user_profile.user)
+    except ValidationError as exc:
+        raise AuthenticationFailed(_(str(exc)))
 
     return user_profile
 
@@ -74,8 +87,8 @@ class JSONWebTokenAuthentication(authentication.BaseAuthentication):
 
                     return (user_profile.user, token)
 
-        except AuthenticationFailed:
-            raise AuthenticationFailed(_('Provided credentials invalid.'))
+        except AuthenticationFailed as exc:
+            raise AuthenticationFailed(_(str(exc) or 'Provided credentials invalid.'))
         except TokenException as exc:
             raise AuthenticationFailed(_(str(exc)))
 
