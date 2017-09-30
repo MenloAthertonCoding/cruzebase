@@ -1,20 +1,27 @@
-from datetime import date
+from datetime import date, timedelta
 import json
 
 from django.urls import reverse
-from django.contrib.auth.models import User as DjangoUser
+from django.utils import timezone
 
 from rest_framework import status
-from rest_framework.test import APIClient, APITestCase
+from rest_framework.test import (
+    APIClient,
+    APITestCase,
+    APIRequestFactory
+)
 
 from auth.models import UserProfile
 from auth.serializers import UserProfileSerializer
+from auth.permissions import IsNotSuspended
+
 
 class UserProfileAuthenticationTests:
     @classmethod
     def setUp(cls):
         """Sets up required database information for running tests"""
         cls.client = APIClient()
+        cls.factory = APIRequestFactory()
 
         # Create a User and UserProfile object
         user_profile = UserProfileSerializer(data={
@@ -303,6 +310,34 @@ class UserProfileAuthenticationTests:
         response = self.client.delete(reverse('rest-auth:users-detail',
                                               kwargs={'pk': self.user_profile.id}))
         self._assert_response_equal_status(response, status.HTTP_403_FORBIDDEN)
+
+    def test_suspended_user(self):
+        """Tests deleting user profile without credentials returns HTTP 403 FORBIDDEN"""
+        # Ensure that user is not authenticated to update profile data when
+        # suspended
+        self.user_profile.suspended_until = timezone.now() + timedelta(seconds=30)
+        self.user_profile.save()
+
+        request = self.factory.put(reverse('rest-auth:users-detail',
+                                           kwargs={'pk': self.user_profile.id}))
+        request.user = self.user_profile.user
+
+        has_permission = IsNotSuspended().has_permission(request, view=None)
+        self.assertFalse(has_permission)
+
+        # Ensure that user is authenticated to update profile data and last_suspension
+        # attribute is set when suspension ends
+        self.user_profile.suspended_until = timezone.now() - timedelta(seconds=30)
+        self.user_profile.save()
+
+        has_permission = IsNotSuspended().has_permission(request, view=None)
+
+        self.assertTrue(has_permission)
+        self._update_profile_user()
+
+        self.assertEqual(self.user_profile.suspended_until, None)
+        self.assertNotEqual(self.user_profile.last_suspension, None)
+
 
 # Parent classes must be in this order
 class UserProfileSessionAuthenticationTests(UserProfileAuthenticationTests, APITestCase):
