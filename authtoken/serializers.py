@@ -1,7 +1,10 @@
+from django.core.exceptions import ValidationError
 from django.contrib.auth import authenticate
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import serializers
+
+from authtoken.authentication import validate_user
 
 
 class AuthTokenSerializer(serializers.Serializer):
@@ -20,12 +23,10 @@ class AuthTokenSerializer(serializers.Serializer):
             user = authenticate(username=username, password=password)
 
             if user:
-                # From Django 1.10 onwards the `authenticate` call simply
-                # returns `None` for is_active=False users.
-                # (Assuming the default `ModelBackend` authentication backend.)
-                if not user.is_active:
-                    msg = _('User account is disabled.')
-                    raise serializers.ValidationError(msg, code='authorization')
+                try:
+                    validate_user(user)
+                except ValidationError as exc:
+                    raise serializers.ValidationError(_(str(exc)), code='authorization')
             else:
                 msg = _('Unable to log in with provided credentials.')
                 raise serializers.ValidationError(msg, code='authorization')

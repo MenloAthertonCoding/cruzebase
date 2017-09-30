@@ -20,7 +20,7 @@ DEFAULTS = {
     'TOKEN_VERIFY_NOT_BEFORE': True,
 
     'TOKEN_HEADER_CLAIMSET_CLASS':
-    'jwt.claimsets.HS256HeaderClaimset',
+    'jwt.claimsets.HMACHeaderClaimset',
 
     'TOKEN_PAYLOAD_CLAIMSET_CLASS':
     'authtoken.claimset.PayloadClaimset',

@@ -3,6 +3,7 @@ from base64 import urlsafe_b64encode
 
 from jwt import claims as jwt_claims
 from jwt.exceptions import ClaimsetException
+from jwt.algorithms import HMACAlgorithm
 
 
 class BaseClaimset:
@@ -40,7 +41,7 @@ class BaseClaimset:
         """
         claims = {}
         for claim in self._instantiate_claims():
-            claims[claim.key()] = claim.value()
+            claims.update({claim.key(): claim.value()})
         return json.dumps(claims)
 
 
@@ -127,7 +128,7 @@ def add_kwargs(claimset, kwargs):
             and arguments as values::
 
             {
-                claims.IssClaim: {'iss': 'Issuer'}
+                claims.IssClaim: {'iss': 'issuer'}
             }
 
     Returns:
@@ -143,8 +144,27 @@ def add_kwargs(claimset, kwargs):
     return claimset
 
 
-class HS256HeaderClaimset(BaseClaimset):
+class HMACHeaderClaimset(BaseClaimset):
+    """A JOSE-compliant header claimset that uses HMAC to sign a token.
+
+    Args:
+        alg (tuple, optional): The algorithm to use to sign the token.
+            For example, use HMACAlgorithm.SHA256 value. Check attributes
+            of HMACAlgorithm for all hashing algorithms.
+
+    Raises:
+        TypeError: If alg is not of type tuple.
+    """
     claims = (
         jwt_claims.TypClaim,
-        jwt_claims.HS256AlgClaim
+        jwt_claims.HMACAlgClaim
     )
+
+    def __init__(self, alg=HMACAlgorithm.SHA256):
+        if not isinstance(alg, tuple):
+            raise TypeError('Algorithm must be of type tuple.')
+
+        self.alg = alg
+
+    def _extra_kwargs(self):
+        return {'alg': self.alg}

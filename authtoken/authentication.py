@@ -1,4 +1,5 @@
 from django.utils.translation import ugettext_lazy as _
+from django.core.exceptions import ValidationError
 
 from rest_framework import authentication
 from rest_framework.exceptions import AuthenticationFailed
@@ -7,6 +8,7 @@ from jwt.exceptions import TokenException
 from jwt import BaseToken, compare, token_factory
 
 from auth.models import UserProfile
+
 from authtoken.settings import api_settings, secret_key
 
 def get_token_instance(user_profile):
@@ -18,18 +20,29 @@ def get_token_instance(user_profile):
         }
     )
 
+def validate_user(user):
+    """Validates a user is active and can be used to authenticate.
+    """
+    # From Django 1.10 onwards the `authenticate` call simply
+    # returns `None` for is_active=False users.
+    # (Assuming the default `ModelBackend` authentication backend.)
+    if not user.is_active:
+        raise ValidationError('User account is disabled.')
+
 def authenticate_credentials(kwargs):
     """
-    Returns a Django `User` object if `token` is valid, Django `User` object
-    exists and is active.
+    Returns a UserProfile object from the given kwargs if the UserProfile object
+    exists and is valid. AuthTokenSerializer validates UserProfile object.
     """
     try:
         user_profile = UserProfile.objects.get(**kwargs)
     except UserProfile.DoesNotExist:
-        raise AuthenticationFailed
+        raise AuthenticationFailed('User non existant')
 
-    if not user_profile.user.is_active:
-        raise AuthenticationFailed
+    try:
+        validate_user(user_profile.user)
+    except ValidationError as exc:
+        raise AuthenticationFailed(_(str(exc)))
 
     return user_profile
 
@@ -55,52 +68,72 @@ class JSONWebTokenAuthentication(authentication.BaseAuthentication):
         Authenticate the request if the signature is valid and return a two-tuple of (user, token).
         """
         auth = authentication.get_authorization_header(request).split()
-
-        if not auth or auth[0].lower() != self.keyword.lower().encode(): # encode to bytestring
+        if not auth or auth[0].lower() != self.keyword.lower().encode():
             return None
 
-        # Ensure the token exists in request headers
-        if len(auth) == 1:
-            msg = _('Invalid token header. No credentials provided.')
-            raise AuthenticationFailed(msg)
-        elif len(auth) > 2:
-            msg = _('Invalid token header. Token string should not contain spaces.')
-            raise AuthenticationFailed(msg)
+        token = self.validate_bearer(auth)
 
         try:
-            token = auth[1]
-        except UnicodeError:
-            msg = _('Invalid token header. Token string should not contain invalid characters.')
-            raise AuthenticationFailed(msg)
+            # TODO Remove this, and don't verify audience as it is not
+            # verified yet.
+            user_profile = self.get_token_user(request, token)
 
+            if user_profile is not None:
+                token_instance = get_token_instance(user_profile)
+
+                # Verify token
+                if compare(token, token_instance, secret_key(),
+                           api_settings.TOKEN_VERIFICATION_ALGORITHM_INSTANCE):
+
+                    return (user_profile.user, token)
+
+        except AuthenticationFailed as exc:
+            raise AuthenticationFailed(_(str(exc) or 'Provided credentials invalid.'))
+        except TokenException as exc:
+            raise AuthenticationFailed(_(str(exc)))
+
+    def get_token_user(self, request, token):
+        """Gets the user specified in the request headers or, more commmonly,
+        in the token payload itself.
+        """
         # Get username or user id in request headers
         username = request.META.get('X_USERNAME')
         user_id = request.META.get('HTTP_USER_ID') # ex. USER-ID: 100
 
+        payload = BaseToken.clean(token)[1]
+        user_profile = None
+
+        # Get user from username, user_id, or from token payload.
+        if username:
+            user_profile = authenticate_credentials({'user__username': username})
+        elif user_id:
+            user_profile = authenticate_credentials({'id': user_id})
+        elif payload.get('aud'):
+            user_profile = authenticate_credentials({'id': payload.get('aud')})
+
+        return user_profile
+
+    def validate_bearer(self, bearer):
+        """Ensure the token passed through request headers is valid and is parsable.
+        If the token is not valid or not parsable, `AuthenticationFailed` is raised.
+        """
+        if len(bearer) == 1:
+            msg = _('Invalid token header. No credentials provided.')
+            raise AuthenticationFailed(msg)
+        elif len(bearer) > 2:
+            msg = _('Invalid token header. Token string should not contain spaces.')
+            raise AuthenticationFailed(msg)
+
         try:
-            # Get user from username, user_id, or from token payload.
-            if username:
-                user_profile = authenticate_credentials({'user__username': username})
-            elif user_id:
-                user_profile = authenticate_credentials({'id': user_id})
-            elif 'aud' in BaseToken.clean(token)[1]: # `aud` in payload
-                user_profile = authenticate_credentials({'id': BaseToken.clean(token)[1]['aud']})
+            token = bearer[1]
+        except UnicodeError:
+            msg = _('Invalid token header. Token string should not contain invalid characters.')
+            raise AuthenticationFailed(msg)
 
-            # Verify token
-            if compare(token, get_token_instance(user_profile), secret_key(),
-                       api_settings.TOKEN_VERIFICATION_ALGORITHM_INSTANCE):
-                return (user_profile.user, token)
-
-        except AuthenticationFailed:
-            raise AuthenticationFailed(_('Provided credentials invalid.'))
-        except TokenException as exc:
-            raise AuthenticationFailed(_(str(exc)))
-
-        return None
+        return token
 
     def authenticate_header(self, request):
-        """
-        Return a string to be used as the value of the `WWW-Authenticate`
+        """Return a string to be used as the value of the `WWW-Authenticate`
         header in a `401 Unauthenticated` response, or `None` if the
         authentication scheme should return `403 Permission Denied` responses.
         """

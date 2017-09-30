@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
 from auth.models import UserProfile
-
+from auth.serializers import UserProfileSerializer
 
 class UserProfileAuthenticationTests:
     @classmethod
@@ -17,19 +17,30 @@ class UserProfileAuthenticationTests:
         cls.client = APIClient()
 
         # Create a User and UserProfile object
-        user_data = cls._get_user_profile_data().pop('user')
-        user = DjangoUser(**user_data)
-        user.set_password(user_data['password'])
-        user.save()
-        cls.user_profile = UserProfile.objects.create(user=user, dob='1995-01-01')
+        user_profile = UserProfileSerializer(data={
+            'user': cls._get_user_profile_data().pop('user'),
+            'dob': '1995-01-01'
+        })
+
+        if not user_profile.is_valid():
+            raise AssertionError(user_profile.errors)
+        cls.user_profile = user_profile.save()
 
         # Create superuser (admin) user
-        super_user_data = cls._get_user_profile_data(username='admin').pop('user')
-        super_user = DjangoUser(**super_user_data)
-        super_user.set_password(super_user_data['password'])
-        super_user.is_superuser = True
-        super_user.save()
-        cls.super_user = UserProfile.objects.create(user=super_user, dob='1995-01-01')
+        super_user = UserProfileSerializer(data={
+            'user': cls._get_user_profile_data(username='admin',
+                                               email='admin@admin.com').pop('user'),
+            'dob': '1995-01-01'
+        })
+
+        if not super_user.is_valid():
+            raise AssertionError(super_user.errors)
+        cls.super_user = super_user.save()
+
+        # Must save it manually instead of passing this value into .save() as
+        # kwargs as DRF does not support relational mappings.
+        cls.super_user.user.is_superuser = True
+        cls.super_user.user.save()
 
     @classmethod
     def _update_profile_user(cls):
