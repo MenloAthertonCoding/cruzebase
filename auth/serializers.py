@@ -88,8 +88,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def validate_user(self, value):
         """Validates the user data is valid.
         """
-        if not UserSerializer(data=value, partial=True).is_valid():
-            raise serializers.ValidationError(_('User data is not valid'))
+        instance = UserSerializer(data=value, partial=True)
+        if not instance.is_valid():
+            raise serializers.ValidationError(instance.errors)
         return value
 
     def validate_dob(self, value):
