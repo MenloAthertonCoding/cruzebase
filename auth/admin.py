@@ -9,11 +9,12 @@ from auth.models import UserProfile
 class UserProfileInline(admin.StackedInline):
     model = UserProfile
     can_delete = False
+    readonly_fields = ('last_suspension',)
 
 
 # Define a new User admin
 class UserAdmin(BaseUserAdmin):
-    inlines = (UserProfileInline, )
+    inlines = (UserProfileInline,)
 
 # Re-register UserAdmin
 admin.site.unregister(User)

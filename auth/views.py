@@ -8,7 +8,7 @@ from rest_framework.decorators import detail_route
 
 from auth.serializers import UserProfileSerializer
 from auth.models import UserProfile
-from auth.permissions import IsAdminOrIsSelf
+from auth.permissions import IsAdminOrIsSelf, IsNotSuspended
 
 
 class UserProfileViewSet(viewsets.ModelViewSet):
@@ -17,7 +17,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     """
     serializer_class = UserProfileSerializer
     queryset = UserProfile.objects.filter(user__is_active=True)
-    permission_classes = (IsAdminOrIsSelf,) # TODO Add IP Blacklist permission
+    permission_classes = (IsAdminOrIsSelf, IsNotSuspended)
 
     def destroy(self, request, pk=None):
         """
@@ -30,7 +30,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
         return Response()
 
-    @detail_route(methods=['post'], permission_classes=[IsAdminOrIsSelf])
+    @detail_route(methods=['post'], permission_classes=[IsAdminOrIsSelf, IsNotSuspended])
     def set_password(self, request, pk=None):
         """Sets a users password"""
         # TODO implement
