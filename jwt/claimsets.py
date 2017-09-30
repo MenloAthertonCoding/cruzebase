@@ -83,7 +83,7 @@ class BaseClaimset:
 
 def claimset_factory(*args):
     """Factory method for creating claimsets. Call add_kwargs to add
-    extra kwargs.HS256HeaderClaimset
+    extra kwargs.
 
     Example:
         To create a claimset using a claimset factory::
@@ -128,7 +128,7 @@ def add_kwargs(claimset, kwargs):
             and arguments as values::
 
             {
-                claims.IssClaim: {'iss': 'Issuer'}
+                claims.IssClaim: {'iss': 'issuer'}
             }
 
     Returns:

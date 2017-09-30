@@ -1,17 +1,17 @@
 """JSON Web Token library.
 
 This module creates, signs, builds, and validates JSON Web Tokens,
-a RFC standard. JSON Web Tokens (JWTs) are stateless tokens used for
+RFC 7519 standard. JSON Web Tokens (JWTs) are stateless tokens used for
 authentication and information exchange.
 
 Examples:
     To create a token, simply create a payload claimset and create a token::
 
         >>> from jwt import token_factory
-        >>> from jwt.claimsets import HS256HeaderClaimset, claimset_factory
+        >>> from jwt.claimsets import HMACHeaderClaimset, claimset_factory
         >>> from jwt import claims
         >>> payload = claimset_factory(claims.NbfClaim, claims.ExpClaim)
-        >>> token_factory(HS256HeaderClaimset, payload)
+        >>> token_factory(HMACHeaderClaimset, payload)
         <jwt.token_factory.<locals>.FactoryToken object at 0x7f74799c7b38>
 
     To create a claimset that has instance variables, simply extend `jwt.claimsets.BaseClaimset`
@@ -21,7 +21,7 @@ Examples:
         >>> from jwt import claims as jwt_claims
         >>> class Payload(BaseClaimset):
         ...     claims = (jwt_claims.IssClaim,)
-        ...     extra_kwargs = {jwt_claims.IssClaim: {'iss': 'Issuer'}}
+        ...     extra_kwargs = {jwt_claims.IssClaim: {'iss': 'issuer'}}
         ...
 
     To sign and build a token, call .sign() and .build(), supplying a secret
@@ -66,7 +66,7 @@ class BaseToken:
 
     Attributes:
         header_cls (BaseClaimset): Class that defines the JWT header claimset.
-            Typically use a JOSE header such as `jwt.claimsets.HS256HeaderClaimset`.
+            Typically use a JOSE header such as `jwt.claimsets.HMACHeaderClaimset`.
             Extends `jwt.claimsets.BaseClaimset`.
         payload_cls (BaseClaimset): Class that defines the JWT payload claimset.
             Extends `jwt.claimsets.BaseClaimset`.
@@ -79,7 +79,7 @@ class BaseToken:
                 when instatntiating::
 
                 {
-                    'payload': {'iss': 'Issuer'}
+                    'payload': {'iss': 'issuer'}
                 }
 
     Raises:
@@ -363,9 +363,9 @@ def token_factory(header, payload, kwargs=None):
         To create a token using a token factory::
 
             >>> from jwt import token_factory
-            >>> from jwt.claimsets import HS256HeaderClaimset
+            >>> from jwt.claimsets import HMACHeaderClaimset
             >>> # `payload` is previously defined
-            >>> token_factory(HS256HeaderClaimset, payload)
+            >>> token_factory(HMACHeaderClaimset, payload)
             <jwt.token_factory.<locals>.FactoryToken object at 0x7f74799c7b38>
 
     Args:
@@ -382,7 +382,7 @@ def token_factory(header, payload, kwargs=None):
                 when instantiating::
 
                 {
-                    'payload': {'iss': 'Issuer'}
+                    'payload': {'iss': 'issuer'}
                 }
 
     Returns:
