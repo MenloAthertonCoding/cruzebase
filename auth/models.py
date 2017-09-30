@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 class UserProfile(models.Model):
     """Model that extends the django user model; adds extra metadata"""
     # User one to one relationship
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='user_profile')
 
     # extra metadata
     dob = models.DateField(verbose_name='Date of Birth')

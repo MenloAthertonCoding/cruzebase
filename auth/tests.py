@@ -5,17 +5,55 @@ from django.urls import reverse
 from django.contrib.auth.models import User as DjangoUser
 
 from rest_framework import status
-from rest_framework.test import APIRequestFactory, APIClient, APITestCase
+from rest_framework.test import APIClient, APITestCase
 
-from auth.views import UserProfileViewSet
 from auth.models import UserProfile
 from auth.serializers import UserProfileSerializer
 
-class UserProfileTests(APITestCase):
+class UserProfileAuthenticationTests:
+    @classmethod
+    def setUp(cls):
+        """Sets up required database information for running tests"""
+        cls.client = APIClient()
+
+        # Create a User and UserProfile object
+        user_profile = UserProfileSerializer(data={
+            'user': cls._get_user_profile_data().pop('user'),
+            'dob': '1995-01-01'
+        })
+
+        if not user_profile.is_valid():
+            raise AssertionError(user_profile.errors)
+        cls.user_profile = user_profile.save()
+
+        # Create superuser (admin) user
+        super_user = UserProfileSerializer(data={
+            'user': cls._get_user_profile_data(username='admin',
+                                               email='admin@admin.com').pop('user'),
+            'dob': '1995-01-01'
+        })
+
+        if not super_user.is_valid():
+            raise AssertionError(super_user.errors)
+        cls.super_user = super_user.save()
+
+        # Must save it manually instead of passing this value into .save() as
+        # kwargs as DRF does not support relational mappings.
+        cls.super_user.user.is_superuser = True
+        cls.super_user.user.save()
 
     @classmethod
-    def get_user_profile_data(cls, dob='1995-01-1', username='TEST', password='password',
-                              first_name='TEST', last_name='TEST', email='TEST@test.com'):
+    def _update_profile_user(cls):
+        """Update `user_profile` after it being updated server side"""
+        cls.user_profile = UserProfile.objects.get(pk=cls.user_profile.pk)
+
+    def _assert_response_equal_status(self, response, code=status.HTTP_200_OK):
+        """Asserts that the response status is equal to `code`"""
+        self.assertEqual(response.status_code, code, msg=response.content)
+
+    @classmethod
+    def _get_user_profile_data(cls, dob='1995-01-01', username='TEST', password='password',
+                               first_name='TEST', last_name='TEST', email='TEST@test.com'):
         """Returns a `dict` full of `UserProfile` information"""
         return {
             'dob': dob,
@@ -28,53 +66,31 @@ class UserProfileTests(APITestCase):
             }
         }
 
-    @classmethod
-    def setUp(cls):
-        """Sets up required database information for running tests"""
-        cls.factory = APIRequestFactory()
-        cls.client = APIClient()
-
-        # Create a User and UserProfile object
-        serializer = UserProfileSerializer(data=cls.get_user_profile_data())
-        if not serializer.is_valid():
-            # If the serializer isn't valid, raise AssertionError
-            raise AssertionError('.is_valid() must return True.')
-        cls.user_profile = serializer.save()
-
-        # Create superuser (admin) user
-        _super_user_data = cls.get_user_profile_data(username='admin').pop('user')
-        _super_user = DjangoUser(**_super_user_data)
-        _super_user.set_password(_super_user_data['password'])
-        _super_user.is_superuser = True
-        _super_user.save()
-        cls.super_user = DjangoUser.objects.get(username=_super_user_data['username'])
-
-    def _assert_response_equal_status(self, response, code=status.HTTP_200_OK):
-        """Asserts that the response status is equal to `code`"""
-        self.assertEqual(response.status_code, code, msg=response.content)
-
     def _login_su(self):
         """Login superuser through APIClient"""
-        self._login(self.super_user.username) # for now this password is `password`
+        self._login(self.super_user.user.username)
 
     def _login_pu(self):
         """Login user profile through APIClient"""
-        django_user = self.user_profile.user
-        self._login(django_user.username)# for now this password is `password`
+        self._login()
 
-    def _login(self, username='username', password='password'):
-        """Login by username and password"""
-        self.client.login(username=username, password=password)
+    def _login(self, username=None, password=None):
+        """
+        Children classes must implement ._login()
+        """
+        raise NotImplementedError("._login() must be overridden.")
 
-    def _update_profile_user(self):
-        """Update `user_profile` after it being updated server side"""
-        self.user_profile = UserProfile.objects.get(pk=self.user_profile.pk)
+    def _logout(self):
+        """
+        Children classes must implement ._logout()
+        """
+        raise NotImplementedError("._logout() must be overridden.")
 
     def test_create_user_profile(self):
         """Tests creating user results in db creation and HTTP 201 CREATED"""
         response = self.client.post(reverse('rest-auth:users-list'),
-                                    self.get_user_profile_data(username='TEST_CREATE_USER',
-                                                               email='TEST_CREATE_USER@test.com'),
+                                    self._get_user_profile_data(username='TEST_CREATE_USER',
+                                                                email='TEST_CREATE_USER@test.com'),
                                     format='json')
         self._assert_response_equal_status(response, status.HTTP_201_CREATED)
         self.assertGreater(UserProfile.objects.count(), 1)
@@ -92,20 +108,21 @@ class UserProfileTests(APITestCase):
             }
         }
 
-        response = self.client.post(reverse('rest-auth:users-list'), user_profile_data, format='json')
+        response = self.client.post(reverse('rest-auth:users-list'),
+                                    user_profile_data, format='json')
         self._assert_response_equal_status(response, status.HTTP_400_BAD_REQUEST)
 
     def test_create_user_profile_duplicate_email(self):
         """Tests creating user with a duplicate email results in HTTP 400 BAD REQUEST"""
         response = self.client.post(reverse('rest-auth:users-list'),
-                                    self.get_user_profile_data(
+                                    self._get_user_profile_data(
                                         username='TEST_CREATE_USER_DUP_EMAIL'
                                     ), format='json')
         self._assert_response_equal_status(response, status.HTTP_400_BAD_REQUEST)
 
     def test_update_user_profile(self):
         """Tests updating user results in db update and HTTP 200 OK"""
-        user_profile_data = self.get_user_profile_data(
+        user_profile_data = self._get_user_profile_data(
             dob='1897-01-01',
             username='TEST_UPDATE_USER',
             password='updated_password',
@@ -114,9 +131,10 @@ class UserProfileTests(APITestCase):
             email='TEST_UPDATED_EMAIL@test.com'
         )
         self._login_pu()
-        response = self.client.put(reverse('rest-auth:users-detail', kwargs={'pk': 1}),
+        response = self.client.put(reverse('rest-auth:users-detail',
+                                           kwargs={'pk': self.user_profile.id}),
                                    user_profile_data, format='json')
-        self.client.logout()
+        self._logout()
         self._assert_response_equal_status(response)
 
         user_password_cached = self.user_profile.user.password
@@ -132,7 +150,7 @@ class UserProfileTests(APITestCase):
 
     def test_update_user_profile_admin(self):
         """Tests updating user by an admin results in db update and HTTP 200 OK"""
-        user_profile_data = self.get_user_profile_data(
+        user_profile_data = self._get_user_profile_data(
             dob='1897-01-01',
             username='TEST_UPDATE_USER',
             password='updated_password',
@@ -141,9 +159,10 @@ class UserProfileTests(APITestCase):
             email='TEST_UPDATED_EMAIL@test.com'
         )
         self._login_su()
-        response = self.client.put(reverse('rest-auth:users-detail', kwargs={'pk': 1}),
+        response = self.client.put(reverse('rest-auth:users-detail',
+                                           kwargs={'pk': self.user_profile.id}),
                                    user_profile_data, format='json')
-        self.client.logout()
+        self._logout()
         self._assert_response_equal_status(response)
 
         user_password_cached = self.user_profile.user.password
@@ -159,7 +178,7 @@ class UserProfileTests(APITestCase):
 
     def test_update_user_profile_no_creds(self):
         """Tests updating user without credentials results in HTP 403 FORBIDDEN"""
-        user_profile_data = self.get_user_profile_data(
+        user_profile_data = self._get_user_profile_data(
             dob='1897-01-01',
             username='TEST_UPDATE_USER',
             password='updated_password',
@@ -167,7 +186,8 @@ class UserProfileTests(APITestCase):
             last_name='TEST_UPDATED_LAST_NAME',
             email='TEST_UPDATED_EMAIL@test.com'
         )
-        response = self.client.put(reverse('rest-auth:users-detail', kwargs={'pk': 1}),
+        response = self.client.put(reverse('rest-auth:users-detail',
+                                           kwargs={'pk': self.user_profile.id}),
                                    user_profile_data, format='json')
         self._assert_response_equal_status(response, status.HTTP_403_FORBIDDEN)
 
@@ -180,9 +200,10 @@ class UserProfileTests(APITestCase):
             }
         }
         self._login_pu()
-        response = self.client.patch(reverse('rest-auth:users-detail', kwargs={'pk': 1}),
+        response = self.client.patch(reverse('rest-auth:users-detail',
+                                             kwargs={'pk': self.user_profile.id}),
                                      user_profile_data, format='json')
-        self.client.logout()
+        self._logout()
         self._assert_response_equal_status(response)
 
         user_password_cached = self.user_profile.user.password
@@ -204,7 +225,8 @@ class UserProfileTests(APITestCase):
                 'last_name': 'TEST_PARTIAL_UPDATED_LAST_NAME_NO_CREDS'
             }
         }
-        response = self.client.patch(reverse('rest-auth:users-detail', kwargs={'pk': 1}),
+        response = self.client.patch(reverse('rest-auth:users-detail',
+                                             kwargs={'pk': self.user_profile.id}),
                                      user_profile_data, format='json')
         self._assert_response_equal_status(response, status.HTTP_403_FORBIDDEN)
 
@@ -217,9 +239,10 @@ class UserProfileTests(APITestCase):
             }
         }
         self._login_su()
-        response = self.client.patch(reverse('rest-auth:users-detail', kwargs={'pk': 1}),
+        response = self.client.patch(reverse('rest-auth:users-detail',
+                                             kwargs={'pk': self.user_profile.id}),
                                      user_profile_data, format='json')
-        self.client.logout()
+        self._logout()
         self._assert_response_equal_status(response)
 
         user_password_cached = self.user_profile.user.password
@@ -247,14 +270,16 @@ class UserProfileTests(APITestCase):
 
     def test_get_user_profile_detail(self):
         """Tests user profile detail returns HTTP 200 OK"""
-        response = self.client.get(reverse('rest-auth:users-detail', kwargs={'pk': 1}))
+        response = self.client.get(reverse('rest-auth:users-detail',
+                                           kwargs={'pk': self.user_profile.id}))
         self._assert_response_equal_status(response)
 
     def test_destroy_user_profile_detail(self):
         """Tests deleting user profile returns HTTP 200 OK"""
         self._login_pu()
-        response = self.client.delete(reverse('rest-auth:users-detail', kwargs={'pk': 1}))
-        self.client.logout()
+        response = self.client.delete(reverse('rest-auth:users-detail',
+                                              kwargs={'pk': self.user_profile.id}))
+        self._logout()
         self._assert_response_equal_status(response)
 
         # Update user profile and assert that the Django User object is not active
@@ -264,8 +289,9 @@ class UserProfileTests(APITestCase):
     def test_destroy_user_profile_detail_admin(self):
         """Tests deleting user profile when logged in as an admin returns HTTP 200 OK"""
         self._login_su()
-        response = self.client.delete(reverse('rest-auth:users-detail', kwargs={'pk': 1}))
-        self.client.logout()
+        response = self.client.delete(reverse('rest-auth:users-detail',
+                                              kwargs={'pk': self.user_profile.id}))
+        self._logout()
         self._assert_response_equal_status(response)
 
         # Update user profile and assert that the Django User object is not active
@@ -274,5 +300,51 @@ class UserProfileTests(APITestCase):
 
     def test_destroy_user_profile_detail_no_creds(self):
         """Tests deleting user profile without credentials returns HTTP 403 FORBIDDEN"""
-        response = self.client.delete(reverse('rest-auth:users-detail', kwargs={'pk': 1}))
+        response = self.client.delete(reverse('rest-auth:users-detail',
+                                              kwargs={'pk': self.user_profile.id}))
         self._assert_response_equal_status(response, status.HTTP_403_FORBIDDEN)
+
+# Parent classes must be in this order
+class UserProfileSessionAuthenticationTests(UserProfileAuthenticationTests, APITestCase):
+
+    def _login(self, username=None, password=None):
+        """
+        Login by username and password. If `username` or `password` is not supplied,
+        assume the values from `.self._get_user_profile_data()`.
+        """
+        user_data = self._get_user_profile_data().pop('user')
+        if not username:
+            username = user_data['username']
+        if not password:
+            password = user_data['password']
+
+        self.client.login(username=username, password=password)
+
+    def _logout(self):
+        self.client.logout()
+
+
+class UserProfileJSONWebTokenAuthenticationTests(UserProfileAuthenticationTests, APITestCase):
+
+    def _login(self, username=None, password=None):
+        """
+        Login by username and password. If `username` or `password` is not supplied,
+        assume the values from `.self._get_user_profile_data()`.
+        """
+        user_data = self._get_user_profile_data().pop('user')
+        if not username:
+            username = user_data['username']
+        if not password:
+            password = user_data['password']
+
+        token = self.client.post(reverse('authtoken:obtain-auth-token'),
+                                 {
+                                     'username': username,
+                                     'password': password
+                                 },
+                                 format='json').data['token']
+
+        self.client.credentials(HTTP_AUTHORIZATION=b'Bearer ' + token)
+
+    def _logout(self):
+        self.client.credentials()
