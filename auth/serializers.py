@@ -99,6 +99,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         """Metadata class. Tells DRF what's gucci."""
         model = UserProfile
         fields = '__all__'
+        read_only_fields = ('suspended_until', 'last_suspension')
 
     def create(self, validated_data):
         """
